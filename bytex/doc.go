@@ -66,6 +66,29 @@ The package also defines a Bytes type with the following methods:
   - (r Bytes) Len() int - Get the length of the bytes
   - (r Bytes) Open() io.Reader - Create an io.Reader from the data
 
+Reader Type:
+The package also includes a Reader type for stream-based reading of Bytes with support for:
+  - Position control (Seek, Position, Remaining)
+  - Typed reading with endianness support (ReadUint16, ReadUint32, ReadUint64)
+  - Convenient methods (Peek, ReadBytes, ReadString)
+  - Standard io.Reader interface implementation
+  - Protocol processing scenarios
+
+  Methods:
+  - NewReader(data Bytes) *Reader - Create a new Reader instance
+  - (r *Reader) Position() int - Get current read position
+  - (r *Reader) Remaining() int - Get remaining readable bytes
+  - (r *Reader) Seek(offset int64, whence int) (int64, error) - Set read position
+  - (r *Reader) ReadByte() (byte, error) - Read a single byte
+  - (r *Reader) ReadUint16(order binary.ByteOrder) (uint16, error) - Read uint16 with byte order
+  - (r *Reader) ReadUint32(order binary.ByteOrder) (uint32, error) - Read uint32 with byte order
+  - (r *Reader) ReadUint64(order binary.ByteOrder) (uint64, error) - Read uint64 with byte order
+  - (r *Reader) ReadBytes(n int) (Bytes, error) - Read n bytes
+  - (r *Reader) ReadString(n int) (string, error) - Read n bytes as string
+  - (r *Reader) Peek(n int) (Bytes, error) - Preview next n bytes without moving position
+  - (r *Reader) Reset() - Reset position to beginning
+  - (r *Reader) Read(p []byte) (n int, err error) - Implement io.Reader interface
+
 Endian Conversion:
 
 Note: For new code, prefer using the standard library's binary.BigEndian
@@ -108,6 +131,12 @@ Examples:
 
 	// Text serialization (Hex)
 	text, _ := result.MarshalText()  // "68656c6c6f"
+
+	// Using Reader for protocol parsing
+	data = bytex.FromBytes([]byte{0x00, 0x00, 0x00, 0x05, 'h', 'e', 'l', 'l', 'o'})
+	reader := bytex.NewReader(data)
+	length, _ := reader.ReadUint32(binary.BigEndian)  // 5
+	message, _ := reader.ReadString(int(length))      // "hello"
 
 Security Considerations:
 Because the conversion functions use unsafe operations, they bypass Go's type safety. This can lead
