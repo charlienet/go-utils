@@ -420,6 +420,77 @@ func TestBytes_Serialization_RoundTrip(t *testing.T) {
 	})
 }
 
+func TestBytes_HexDump(t *testing.T) {
+	tests := []struct {
+		name     string
+		data     Bytes
+		expected string
+	}{
+		{
+			"空数据",
+			Bytes([]byte{}),
+			"",
+		},
+		{
+			"单字节",
+			Bytes([]byte{0x00}),
+			"00",
+		},
+		{
+			"一行完整",
+			Bytes([]byte{0x00, 0x32, 0x23, 0x64, 0x89, 0x32, 0x32, 0x32, 0x00, 0x32, 0x23, 0x64, 0x89, 0x32, 0x32, 0x32}),
+			"00 32 23 64 89 32 32 32 00 32 23 64 89 32 32 32",
+		},
+		{
+			"两行",
+			Bytes([]byte{0x00, 0x32, 0x23, 0x64, 0x89, 0x32, 0x32, 0x32, 0x00, 0x32, 0x23, 0x64, 0x89, 0x32, 0x32, 0x32, 0xab, 0xcd}),
+			"00 32 23 64 89 32 32 32 00 32 23 64 89 32 32 32\nab cd",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.data.HexDump()
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestBytes_HexDumpWidth(t *testing.T) {
+	tests := []struct {
+		name     string
+		data     Bytes
+		width    int
+		expected string
+	}{
+		{
+			"4字节宽",
+			Bytes([]byte{0x00, 0x32, 0x23, 0x64, 0x89, 0x32, 0x32, 0x32}),
+			4,
+			"00 32 23 64\n89 32 32 32",
+		},
+		{
+			"8字节宽",
+			Bytes([]byte{0x00, 0x32, 0x23, 0x64, 0x89, 0x32, 0x32, 0x32, 0xab}),
+			8,
+			"00 32 23 64 89 32 32 32\nab",
+		},
+		{
+			"无效宽度回退到16",
+			Bytes([]byte{0x00, 0x32, 0x23, 0x64}),
+			0,
+			"00 32 23 64",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.data.HexDumpWidth(tt.width)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
 func TestBytes_RoundTrip(t *testing.T) {
 	// 测试 From* 和 To* 的往返转换
 	t.Run("Uint64", func(t *testing.T) {

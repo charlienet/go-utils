@@ -263,3 +263,39 @@ func (r *Bytes) UnmarshalText(data []byte) error {
 	*r = Bytes(decoded)
 	return nil
 }
+
+// HexDump 返回格式化的十六进制输出，每行 16 字节。
+// 适合调试和日志输出。
+func (r Bytes) HexDump() string {
+	return r.HexDumpWidth(16)
+}
+
+// HexDumpWidth 返回格式化的十六进制输出，每行 width 字节。
+// 适合调试和日志输出。
+func (r Bytes) HexDumpWidth(width int) string {
+	if len(r) == 0 {
+		return ""
+	}
+	if width <= 0 {
+		width = 16
+	}
+
+	var buf bytes.Buffer
+	for i := 0; i < len(r); i += width {
+		end := i + width
+		if end > len(r) {
+			end = len(r)
+		}
+		for j := i; j < end; j++ {
+			if j > i {
+				buf.WriteByte(' ')
+			}
+			buf.WriteString(lowerHexTable[r[j]>>4 : r[j]>>4+1])
+			buf.WriteString(lowerHexTable[r[j]&0x0f : r[j]&0x0f+1])
+		}
+		if end < len(r) {
+			buf.WriteByte('\n')
+		}
+	}
+	return buf.String()
+}
