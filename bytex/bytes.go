@@ -2,12 +2,14 @@ package bytex
 
 import (
 	"bytes"
+	"encoding/base32"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/binary"
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -118,6 +120,66 @@ func (r Bytes) encodeHex(table string) string {
 
 func (r Bytes) Base64() string {
 	return base64.StdEncoding.EncodeToString(r)
+}
+
+// Base32 返回 Base32 编码字符串
+func (r Bytes) Base32() string {
+	return base32.StdEncoding.EncodeToString(r)
+}
+
+// Base58 返回 Base58 编码字符串（比特币地址常用）
+// Base58 字母表：123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz
+func (r Bytes) Base58() string {
+	const alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+	
+	if len(r) == 0 {
+		return ""
+	}
+	
+	// 计算前导零的数量
+	zeros := 0
+	for zeros < len(r) && r[zeros] == 0 {
+		zeros++
+	}
+	
+	// 将字节转换为 base58 数字
+	b58 := make([]int, len(r)*138/100+1) // log(256)/log(58), rounded up
+	
+	for _, digit := range r {
+		carry := int(digit)
+		for j := len(b58) - 1; j >= 0; j-- {
+			carry += b58[j] << 8 // b58[j] * 256
+			b58[j] = carry % 58
+			carry /= 58
+		}
+	}
+	
+	// 找到第一个非零数字
+	start := 0
+	for start < len(b58) && b58[start] == 0 {
+		start++
+	}
+	
+	// 构建结果字符串
+	var result strings.Builder
+	result.Grow(zeros + len(b58) - start)
+	
+	// 添加前导 '1' (代表零)
+	for i := 0; i < zeros; i++ {
+		result.WriteByte(alphabet[0])
+	}
+	
+	// 添加实际的 base58 编码
+	for i := start; i < len(b58); i++ {
+		result.WriteByte(alphabet[b58[i]])
+	}
+	
+	return result.String()
+}
+
+// Base64URL 返回 URL 安全的 Base64 编码字符串
+func (r Bytes) Base64URL() string {
+	return base64.URLEncoding.EncodeToString(r)
 }
 
 // Bytes 返回底层字节切片引用。
@@ -264,6 +326,32 @@ func (r *Bytes) UnmarshalText(data []byte) error {
 	return nil
 }
 
+// Join 拼接多个字节切片，使用 sep 分隔
+func Join(sep []byte, items ...[]byte) Bytes {
+	var result [][]byte
+	for _, item := range items {
+		result = append(result, item)
+	}
+	joined := bytes.Join(result, sep)
+	return Bytes(joined)
+}
+
+// Split 分割字节切片
+func Split(b, sep []byte) []Bytes {
+	split := bytes.Split(b, sep)
+	result := make([]Bytes, len(split))
+	for i, s := range split {
+		result[i] = Bytes(s)
+	}
+	return result
+}
+
+// Repeat 重复字节切片 count 次
+func Repeat(b []byte, count int) Bytes {
+	repeated := bytes.Repeat(b, count)
+	return Bytes(repeated)
+}
+
 // HexDump 返回格式化的十六进制输出，每行 16 字节。
 // 适合调试和日志输出。
 func (r Bytes) HexDump() string {
@@ -298,4 +386,48 @@ func (r Bytes) HexDumpWidth(width int) string {
 		}
 	}
 	return buf.String()
+}
+
+// Reverse 返回反转后的字节切片副本
+func (r Bytes) Reverse() Bytes {
+	result := make(Bytes, len(r))
+	for i, j := 0, len(r)-1; i < len(r); i, j = i+1, j-1 {
+		result[i] = r[j]
+	}
+	return result
+}
+
+// Slice 返回字节切片的子切片 [start:end]
+// 如果 start 或 end 超出范围，会自动调整
+func (r Bytes) Slice(start, end int) Bytes {
+	// 调整 start
+	if start < 0 {
+		start = 0
+	} else if start > len(r) {
+		start = len(r)
+	}
+	
+	// 调整 end
+	if end < start {
+		end = start
+	} else if end > len(r) {
+		end = len(r)
+	}
+	
+	return r[start:end]
+}
+
+// Trim 返回去除指定字节集合后的副本
+func (r Bytes) Trim(cutset []byte) Bytes {
+	return Bytes(bytes.Trim(r, string(cutset)))
+}
+
+// TrimLeft 返回去除左侧指定字节集合后的副本
+func (r Bytes) TrimLeft(cutset []byte) Bytes {
+	return Bytes(bytes.TrimLeft(r, string(cutset)))
+}
+
+// TrimRight 返回去除右侧指定字节集合后的副本
+func (r Bytes) TrimRight(cutset []byte) Bytes {
+	return Bytes(bytes.TrimRight(r, string(cutset)))
 }

@@ -10,8 +10,8 @@ The zero-copy conversion functions (StringToBytes and BytesToString) use unsafe 
 memory allocation. This means the returned slice or string shares memory with the original data.
 Modifying the result of StringToBytes will cause undefined behavior since strings in Go are immutable.
 Similarly, if the original byte slice passed to BytesToString is modified after the conversion, the
-resulting string may also change, leading to undefined behavior. Only use these functions when you
-can guarantee the data won't be modified or when you only need read-only access.
+resulting string may also change, leading to undefined behavior. Only use these functions
+when you can guarantee the data won't be modified or when you only need read-only access.
 
 Exported Functions:
   - StringToBytes(s string) []byte - Convert string to byte slice without memory allocation
@@ -36,6 +36,16 @@ The package also defines a Bytes type with the following methods:
   - (r Bytes) Hex() string - Convert to lowercase hexadecimal string
   - (r Bytes) UpperHex() string - Convert to uppercase hexadecimal string
   - (r Bytes) Base64() string - Convert to Base64 string
+  - (r Bytes) Base32() string - Convert to Base32 string
+  - (r Bytes) Base58() string - Convert to Base58 string (Bitcoin address format)
+  - (r Bytes) Base64URL() string - Convert to URL-safe Base64 string
+
+  Byte Operations:
+  - (r Bytes) Reverse() Bytes - Return reversed copy of the byte slice
+  - (r Bytes) Slice(start, end int) Bytes - Return sub-slice [start:end] with bounds checking
+  - (r Bytes) Trim(cutset []byte) Bytes - Return copy with specified bytes trimmed from both ends
+  - (r Bytes) TrimLeft(cutset []byte) Bytes - Return copy with specified bytes trimmed from left
+  - (r Bytes) TrimRight(cutset []byte) Bytes - Return copy with specified bytes trimmed from right
 
   Parsing:
   - (r Bytes) ToUint64(endian binary.ByteOrder) (uint64, error) - Parse bytes as uint64
@@ -52,6 +62,11 @@ The package also defines a Bytes type with the following methods:
   - Index(s, sep []byte) int - Find first occurrence of sep in s, -1 if not found
   - HasPrefix(s, prefix []byte) bool - Check if s starts with prefix
   - HasSuffix(s, suffix []byte) bool - Check if s ends with suffix
+
+  Utilities:
+  - Join(sep []byte, items ...[]byte) Bytes - Join byte slices with separator
+  - Split(b, sep []byte) []Bytes - Split byte slice by separator
+  - Repeat(b []byte, count int) Bytes - Repeat byte slice count times
 
   Serialization:
   - (r Bytes) MarshalJSON() ([]byte, error) - JSON serialization using Base64 encoding
@@ -89,6 +104,25 @@ The package also includes a Reader type for stream-based reading of Bytes with s
   - (r *Reader) Reset() - Reset position to beginning
   - (r *Reader) Read(p []byte) (n int, err error) - Implement io.Reader interface
 
+Writer Type:
+The package also includes a Writer type for stream-based writing of Bytes with support for:
+  - Type-safe writing with endianness support (WriteUint16, WriteUint32, WriteUint64)
+  - Convenient methods (WriteBytes, WriteString)
+  - Standard bytes.Buffer-like functionality
+  - Protocol construction scenarios
+
+  Methods:
+  - NewWriter() *Writer - Create a new Writer instance
+  - NewWriterSize(size int) *Writer - Create a new Writer with initial capacity
+  - (w *Writer) Bytes() Bytes - Get the written byte data
+  - (w *Writer) Len() int - Get the length of written data
+  - (w *Writer) Reset() - Reset the writer to empty state
+  - (w *Writer) WriteUint16(v uint16, order binary.ByteOrder) error - Write uint16 with byte order
+  - (w *Writer) WriteUint32(v uint32, order binary.ByteOrder) error - Write uint32 with byte order
+  - (w *Writer) WriteUint64(v uint64, order binary.ByteOrder) error - Write uint64 with byte order
+  - (w *Writer) WriteBytes(b Bytes) error - Write Bytes data
+  - (w *Writer) WriteString(s string) error - Write string data
+
 Endian Conversion:
 
 Note: For new code, prefer using the standard library's binary.BigEndian
@@ -116,6 +150,9 @@ Examples:
 	result := bytex.FromString("hello")
 	hexStr := result.Hex()           // "68656c6c6f"
 	base64Str := result.Base64()     // "aGVsbG8="
+	base32Str := result.Base32()     // "NBSWY3DPFQQHO33SNRSCC=== (example)"
+	base58Str := result.Base58()     // "StV1DL6CwTryKyV" (example)
+	base64URLStr := result.Base64URL() // "aGVsbG8="
 
   // Comparison and search
   data := bytex.FromString("hello world")
@@ -137,6 +174,23 @@ Examples:
 	reader := bytex.NewReader(data)
 	length, _ := reader.ReadUint32(binary.BigEndian)  // 5
 	message, _ := reader.ReadString(int(length))      // "hello"
+
+	// Using Writer for protocol construction
+	writer := bytex.NewWriter()
+	writer.WriteUint32(5, binary.BigEndian)  // length prefix
+	writer.WriteString("hello")              // payload
+	packet := writer.Bytes()                 // {0x00, 0x00, 0x00, 0x05, 'h', 'e', 'l', 'l', 'o'}
+
+	// Byte operations
+	data = bytex.FromString("hello")
+	reversed := data.Reverse()          // "olleh"
+	sub := data.Slice(1, 4)             // "ell"
+	trimmed := data.Trim([]byte("h"))   // "ello" (if applicable)
+
+	// Utility functions
+	parts := bytex.Split([]byte("a,b,c"), []byte(","))
+	joined := bytex.Join([]byte(","), []byte("a"), []byte("b"), []byte("c"))
+	repeated := bytex.Repeat([]byte("A"), 5)  // "AAAAA"
 
 Security Considerations:
 Because the conversion functions use unsafe operations, they bypass Go's type safety. This can lead
