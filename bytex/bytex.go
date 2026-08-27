@@ -1,4 +1,4 @@
-package bytesconv
+package bytex
 
 import (
 	"unsafe"

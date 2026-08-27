@@ -12,7 +12,7 @@ go get github.com/charlienet/go-utils
 
 | 包 | 说明 |
 |---|------|
-| [bytesconv](./bytesconv) | 零拷贝 string/[]byte 转换 |
+| [bytex](./bytex) | 零拷贝 string/[]byte 转换 |
 | [compiledbuffer](./compiledbuffer) | 泛型编译结果缓存 |
 | [currency](./currency) | 货币转换（元/分） |
 | [expr](./expr) | 控制流语法糖（三元/If-Else/Switch） |
@@ -26,14 +26,14 @@ go get github.com/charlienet/go-utils
 
 ## 使用示例
 
-### bytesconv - 零拷贝转换
+### bytex - 零拷贝转换
 
 ```go
-import "github.com/charlienet/go-utils/bytesconv"
+import "github.com/charlienet/go-utils/bytex"
 
 // 零拷贝转换（注意：返回的切片不应被修改）
-b := bytesconv.StringToBytes("hello")
-s := bytesconv.BytesToString(b)
+b := bytex.StringToBytes("hello")
+s := bytex.BytesToString(b)
 ```
 
 ### stringx - 命名风格转换

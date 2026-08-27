@@ -1,4 +1,4 @@
-package bytesconv
+package bytex
 
 import (
 	"io"
@@ -68,24 +68,24 @@ func TestBytesToString_ZeroCopy(t *testing.T) {
 
 func TestFromString(t *testing.T) {
 	result := FromString("hello")
-	assert.Equal(t, BytesResult([]byte("hello")), result)
+	assert.Equal(t, Bytes([]byte("hello")), result)
 }
 
 func TestFromBytes(t *testing.T) {
 	input := []byte("hello")
 	result := FromBytes(input)
-	assert.Equal(t, BytesResult(input), result)
+	assert.Equal(t, Bytes(input), result)
 }
 
 func TestFromHexString(t *testing.T) {
 	tests := []struct {
 		input    string
-		expected BytesResult
+		expected Bytes
 		hasError bool
 	}{
-		{"68656c6c6f", BytesResult([]byte("hello")), false},
-		{"", BytesResult([]byte{}), false},
-		{"48656c6c6f20576f726c64", BytesResult([]byte("Hello World")), false},
+		{"68656c6c6f", Bytes([]byte("hello")), false},
+		{"", Bytes([]byte{}), false},
+		{"48656c6c6f20576f726c64", Bytes([]byte("Hello World")), false},
 		{"invalid", nil, true},
 		{"0", nil, true}, // 奇数长度
 	}
@@ -104,12 +104,12 @@ func TestFromHexString(t *testing.T) {
 func TestFromBase64String(t *testing.T) {
 	tests := []struct {
 		input    string
-		expected BytesResult
+		expected Bytes
 		hasError bool
 	}{
-		{"aGVsbG8=", BytesResult([]byte("hello")), false},
-		{"", BytesResult([]byte{}), false},
-		{"SGVsbG8gV29ybGQ=", BytesResult([]byte("Hello World")), false},
+		{"aGVsbG8=", Bytes([]byte("hello")), false},
+		{"", Bytes([]byte{}), false},
+		{"SGVsbG8gV29ybGQ=", Bytes([]byte("Hello World")), false},
 		{"invalid!@#", nil, true},
 	}
 
@@ -124,14 +124,14 @@ func TestFromBase64String(t *testing.T) {
 	}
 }
 
-func TestBytesResult_Hex(t *testing.T) {
+func TestBytes_Hex(t *testing.T) {
 	tests := []struct {
-		input    BytesResult
+		input    Bytes
 		expected string
 	}{
-		{BytesResult([]byte("hello")), "68656c6c6f"},
-		{BytesResult([]byte{}), ""},
-		{BytesResult([]byte{0x00, 0xff}), "00ff"},
+		{Bytes([]byte("hello")), "68656c6c6f"},
+		{Bytes([]byte{}), ""},
+		{Bytes([]byte{0x00, 0xff}), "00ff"},
 	}
 
 	for _, tt := range tests {
@@ -140,31 +140,31 @@ func TestBytesResult_Hex(t *testing.T) {
 	}
 }
 
-func TestBytesResult_UppercaseHex(t *testing.T) {
+func TestBytes_UpperHex(t *testing.T) {
 	tests := []struct {
-		input    BytesResult
+		input    Bytes
 		expected string
 	}{
-		{BytesResult([]byte("hello")), "68656C6C6F"},
-		{BytesResult([]byte{}), ""},
-		{BytesResult([]byte{0x00, 0xff}), "00FF"},
-		{BytesResult([]byte{0xab, 0xcd}), "ABCD"},
+		{Bytes([]byte("hello")), "68656C6C6F"},
+		{Bytes([]byte{}), ""},
+		{Bytes([]byte{0x00, 0xff}), "00FF"},
+		{Bytes([]byte{0xab, 0xcd}), "ABCD"},
 	}
 
 	for _, tt := range tests {
-		result := tt.input.UppercaseHex()
+		result := tt.input.UpperHex()
 		assert.Equal(t, tt.expected, result)
 	}
 }
 
-func TestBytesResult_Base64(t *testing.T) {
+func TestBytes_Base64(t *testing.T) {
 	tests := []struct {
-		input    BytesResult
+		input    Bytes
 		expected string
 	}{
-		{BytesResult([]byte("hello")), "aGVsbG8="},
-		{BytesResult([]byte{}), ""},
-		{BytesResult([]byte("Hello World")), "SGVsbG8gV29ybGQ="},
+		{Bytes([]byte("hello")), "aGVsbG8="},
+		{Bytes([]byte{}), ""},
+		{Bytes([]byte("Hello World")), "SGVsbG8gV29ybGQ="},
 	}
 
 	for _, tt := range tests {
@@ -173,19 +173,32 @@ func TestBytesResult_Base64(t *testing.T) {
 	}
 }
 
-func TestBytesResult_Bytes(t *testing.T) {
-	input := BytesResult([]byte("hello"))
+func TestBytes_Bytes(t *testing.T) {
+	input := Bytes([]byte("hello"))
 	result := input.Bytes()
 	assert.Equal(t, []byte("hello"), result)
 }
 
-func TestBytesResult_String(t *testing.T) {
-	input := BytesResult([]byte("hello"))
-	result := input.String()
-	assert.Equal(t, "68656c6c6f", result) // Hex 编码
+func TestBytes_String(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    Bytes
+		expected string
+	}{
+		{"纯ASCII", Bytes([]byte("hello")), `"hello"`},
+		{"含不可打印字符", Bytes([]byte{0x00, 0xff}), `"\x00\xff"`},
+		{"空切片", Bytes([]byte{}), `""`},
+		{"中文", Bytes([]byte("你好")), `"你好"`},
+		{"混合", Bytes([]byte("hello\x00世界")), `"hello\x00世界"`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, tt.input.String())
+		})
+	}
 }
 
-func TestBigEndian_BytesToUInt64(t *testing.T) {
+func TestBigEndian_BytesToUint64(t *testing.T) {
 	tests := []struct {
 		input    []byte
 		expected uint64
@@ -202,7 +215,7 @@ func TestBigEndian_BytesToUInt64(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		result, err := BigEndian.BytesToUInt64(tt.input)
+		result, err := BigEndian.BytesToUint64(tt.input)
 		if tt.hasError {
 			assert.Error(t, err)
 		} else {
@@ -212,7 +225,7 @@ func TestBigEndian_BytesToUInt64(t *testing.T) {
 	}
 }
 
-func TestLittleEndian_BytesToUInt64(t *testing.T) {
+func TestLittleEndian_BytesToUint64(t *testing.T) {
 	tests := []struct {
 		input    []byte
 		expected uint64
@@ -229,7 +242,7 @@ func TestLittleEndian_BytesToUInt64(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		result, err := LittleEndian.BytesToUInt64(tt.input)
+		result, err := LittleEndian.BytesToUint64(tt.input)
 		if tt.hasError {
 			assert.Error(t, err)
 		} else {
@@ -249,7 +262,7 @@ func TestEndian_RoundTrip(t *testing.T) {
 		for i := 0; i < 8; i++ {
 			bytes[7-i] = byte(v >> (i * 8))
 		}
-		result, err := BigEndian.BytesToUInt64(bytes)
+		result, err := BigEndian.BytesToUint64(bytes)
 		assert.NoError(t, err)
 		assert.Equal(t, v, result)
 
@@ -257,36 +270,36 @@ func TestEndian_RoundTrip(t *testing.T) {
 		for i := 0; i < 8; i++ {
 			bytes[i] = byte(v >> (i * 8))
 		}
-		result, err = LittleEndian.BytesToUInt64(bytes)
+		result, err = LittleEndian.BytesToUint64(bytes)
 		assert.NoError(t, err)
 		assert.Equal(t, v, result)
 	}
 }
 
-func TestBytesResult_Open(t *testing.T) {
+func TestBytes_Open(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    BytesResult
+		input    Bytes
 		expected string
 	}{
 		{
 			name:     "普通字符串",
-			input:    BytesResult([]byte("hello")),
+			input:    Bytes([]byte("hello")),
 			expected: "hello",
 		},
 		{
 			name:     "空切片",
-			input:    BytesResult([]byte{}),
+			input:    Bytes([]byte{}),
 			expected: "",
 		},
 		{
 			name:     "包含中文",
-			input:    BytesResult([]byte("你好世界")),
+			input:    Bytes([]byte("你好世界")),
 			expected: "你好世界",
 		},
 		{
 			name:     "二进制数据",
-			input:    BytesResult{0x00, 0xff, 0xab, 0xcd},
+			input:    Bytes{0x00, 0xff, 0xab, 0xcd},
 			expected: string([]byte{0x00, 0xff, 0xab, 0xcd}),
 		},
 	}
@@ -305,4 +318,19 @@ func TestBytesResult_Open(t *testing.T) {
 			assert.Equal(t, tt.expected, string(result))
 		})
 	}
+}
+
+func TestBytes_NilReceiver(t *testing.T) {
+	var b Bytes
+
+	assert.Equal(t, "", b.Hex())
+	assert.Equal(t, "", b.UpperHex())
+	assert.Equal(t, "", b.Base64())
+	assert.Equal(t, `""`, b.String())
+	assert.Equal(t, 0, b.Len())
+	assert.Nil(t, b.Bytes())
+	assert.NotNil(t, b.Open())
+
+	cloned := b.Clone()
+	assert.Empty(t, cloned) // Clone() on nil returns empty slice, not nil
 }

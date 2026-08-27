@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/charlienet/go-utils/bytesconv"
+	"github.com/charlienet/go-utils/bytex"
 	"github.com/charlienet/go-utils/internal/maps"
 )
 
@@ -78,7 +78,7 @@ func Pascal2UpperSnake(name string) string {
 		joined[i] = toUpper(joined[i])
 	}
 
-	s := bytesconv.BytesToString(joined)
+	s := bytex.BytesToString(joined)
 	pascal2upperSnake.Set(name, s)
 
 	return s

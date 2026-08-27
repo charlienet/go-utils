@@ -3,7 +3,7 @@ package random
 import (
 	"strings"
 
-	"github.com/charlienet/go-utils/bytesconv"
+	"github.com/charlienet/go-utils/bytex"
 )
 
 const (
@@ -39,7 +39,7 @@ func StringScope(str string) *charScope {
 	len := len(str)
 
 	scope := &charScope{
-		bytes:  bytesconv.StringToBytes(str),
+		bytes:  bytex.StringToBytes(str),
 		length: len,
 		bits:   1,
 	}
@@ -65,7 +65,7 @@ func (scope *charScope) Generate(length int, prefix ...string) string {
 		preLength = len(pre)
 
 		ret = make([]byte, preLength, n+preLength)
-		copy(ret, bytesconv.StringToBytes(pre))
+		copy(ret, bytex.StringToBytes(pre))
 	} else {
 		ret = make([]byte, 0, n)
 	}
@@ -90,5 +90,5 @@ func (scope *charScope) Generate(length int, prefix ...string) string {
 		remain--
 	}
 
-	return bytesconv.BytesToString(ret)
+	return bytex.BytesToString(ret)
 }
