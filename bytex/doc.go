@@ -46,12 +46,12 @@ The package also defines a Bytes type with the following methods:
   - (r Bytes) ToInt16(endian binary.ByteOrder) (int16, error) - Parse bytes as int16
 
   Comparison & Search:
-  - (r Bytes) Equal(other Bytes) bool - Check if two Bytes are equal
-  - (r Bytes) Compare(other Bytes) int - Compare two Bytes, returns -1, 0, or 1
-  - (r Bytes) Contains(sub []byte) bool - Check if Bytes contains subsequence
-  - (r Bytes) Index(sub []byte) int - Find first occurrence of subsequence, -1 if not found
-  - (r Bytes) HasPrefix(prefix []byte) bool - Check if Bytes starts with prefix
-  - (r Bytes) HasSuffix(suffix []byte) bool - Check if Bytes ends with suffix
+  - Equal(a, b []byte) bool - Check if two byte slices are equal
+  - Compare(a, b []byte) int - Compare two byte slices, returns -1, 0, or 1
+  - Contains(b, subslice []byte) bool - Check if b contains subslice
+  - Index(s, sep []byte) int - Find first occurrence of sep in s, -1 if not found
+  - HasPrefix(s, prefix []byte) bool - Check if s starts with prefix
+  - HasSuffix(s, suffix []byte) bool - Check if s ends with suffix
 
   Serialization:
   - (r Bytes) MarshalJSON() ([]byte, error) - JSON serialization using Base64 encoding
@@ -117,10 +117,10 @@ Examples:
 	hexStr := result.Hex()           // "68656c6c6f"
 	base64Str := result.Base64()     // "aGVsbG8="
 
-	// Comparison and search
-	data := bytex.FromString("hello world")
-	data.Contains([]byte("world"))   // true
-	data.HasPrefix([]byte("hello"))  // true
+  // Comparison and search
+  data := bytex.FromString("hello world")
+  Contains(data, []byte("world"))   // true
+  HasPrefix(data, []byte("hello"))  // true
 
 	// Numeric round-trip
 	b := bytex.FromUint64(0x1234567890ABCDEF, binary.BigEndian)

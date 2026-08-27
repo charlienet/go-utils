@@ -195,12 +195,12 @@ func TestReadBytes(t *testing.T) {
 	reader := NewReader(data)
 	
 	bytes, err := reader.ReadBytes(5)
-	if err != nil || !bytes.Equal(FromString("hello")) {
+	if err != nil || !Equal(bytes, FromString("hello")) {
 		t.Errorf("ReadBytes failed: %v, bytes: %s", err, bytes.String())
 	}
 	
 	bytes, err = reader.ReadBytes(1)
-	if err != nil || !bytes.Equal(FromString(" ")) {
+	if err != nil || !Equal(bytes, FromString(" ")) {
 		t.Errorf("ReadBytes failed: %v, bytes: %s", err, bytes.String())
 	}
 	
@@ -237,7 +237,7 @@ func TestPeek(t *testing.T) {
 	reader := NewReader(data)
 	
 	peeked, err := reader.Peek(3)
-	if err != nil || !peeked.Equal(FromString("hel")) {
+	if err != nil || !Equal(peeked, FromString("hel")) {
 		t.Errorf("Peek failed: %v, peeked: %s", err, peeked.String())
 	}
 	

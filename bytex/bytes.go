@@ -151,34 +151,34 @@ func (r Bytes) Open() io.Reader {
 	return bytes.NewReader(r)
 }
 
-// Equal 比较两个 Bytes 是否相等
-func (r Bytes) Equal(other Bytes) bool {
-	return bytes.Equal(r, other)
+// Equal 比较两个字节切片是否相等
+func Equal(a, b []byte) bool {
+	return bytes.Equal(a, b)
 }
 
-// Compare 比较两个 Bytes 的大小，返回 -1（小于）、0（等于）或 1（大于）
-func (r Bytes) Compare(other Bytes) int {
-	return bytes.Compare(r, other)
+// Compare 比较两个字节切片的大小，返回 -1（小于）、0（等于）或 1（大于）
+func Compare(a, b []byte) int {
+	return bytes.Compare(a, b)
 }
 
-// Contains 检查是否包含指定的子序列
-func (r Bytes) Contains(sub []byte) bool {
-	return bytes.Contains(r, sub)
+// Contains 检查 b 是否包含 subslice
+func Contains(b, subslice []byte) bool {
+	return bytes.Contains(b, subslice)
 }
 
-// Index 查找子序列第一次出现的位置，未找到返回 -1
-func (r Bytes) Index(sub []byte) int {
-	return bytes.Index(r, sub)
+// Index 查找 sep 在 s 中第一次出现的位置，未找到返回 -1
+func Index(s, sep []byte) int {
+	return bytes.Index(s, sep)
 }
 
-// HasPrefix 检查是否以指定的前缀开头
-func (r Bytes) HasPrefix(prefix []byte) bool {
-	return bytes.HasPrefix(r, prefix)
+// HasPrefix 检查 s 是否以 prefix 开头
+func HasPrefix(s, prefix []byte) bool {
+	return bytes.HasPrefix(s, prefix)
 }
 
-// HasSuffix 检查是否以指定的后缀结尾
-func (r Bytes) HasSuffix(suffix []byte) bool {
-	return bytes.HasSuffix(r, suffix)
+// HasSuffix 检查 s 是否以 suffix 结尾
+func HasSuffix(s, suffix []byte) bool {
+	return bytes.HasSuffix(s, suffix)
 }
 
 // ToUint64 从字节解析 uint64

@@ -7,133 +7,133 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestBytes_Equal(t *testing.T) {
+func TestEqual(t *testing.T) {
 	tests := []struct {
 		name     string
-		a        Bytes
-		b        Bytes
+		a        []byte
+		b        []byte
 		expected bool
 	}{
-		{"相同内容", Bytes([]byte("hello")), Bytes([]byte("hello")), true},
-		{"不同内容", Bytes([]byte("hello")), Bytes([]byte("world")), false},
-		{"长度不同", Bytes([]byte("hello")), Bytes([]byte("hi")), false},
-		{"空切片", Bytes([]byte{}), Bytes([]byte{}), true},
-		{"nil 和空", nil, Bytes([]byte{}), true},
+		{"相同内容", []byte("hello"), []byte("hello"), true},
+		{"不同内容", []byte("hello"), []byte("world"), false},
+		{"长度不同", []byte("hello"), []byte("hi"), false},
+		{"空切片", []byte{}, []byte{}, true},
+		{"nil 和空", nil, []byte{}, true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.a.Equal(tt.b)
+			result := Equal(tt.a, tt.b)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
 
-func TestBytes_Compare(t *testing.T) {
+func TestCompare(t *testing.T) {
 	tests := []struct {
 		name     string
-		a        Bytes
-		b        Bytes
+		a        []byte
+		b        []byte
 		expected int
 	}{
-		{"相等", Bytes([]byte("hello")), Bytes([]byte("hello")), 0},
-		{"小于", Bytes([]byte("abc")), Bytes([]byte("def")), -1},
-		{"大于", Bytes([]byte("def")), Bytes([]byte("abc")), 1},
-		{"前缀", Bytes([]byte("hello")), Bytes([]byte("helloworld")), -1},
-		{"空切片", Bytes([]byte{}), Bytes([]byte{}), 0},
+		{"相等", []byte("hello"), []byte("hello"), 0},
+		{"小于", []byte("abc"), []byte("def"), -1},
+		{"大于", []byte("def"), []byte("abc"), 1},
+		{"前缀", []byte("hello"), []byte("helloworld"), -1},
+		{"空切片", []byte{}, []byte{}, 0},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.a.Compare(tt.b)
+			result := Compare(tt.a, tt.b)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
 
-func TestBytes_Contains(t *testing.T) {
+func TestContains(t *testing.T) {
 	tests := []struct {
 		name     string
-		data     Bytes
+		data     []byte
 		sub      []byte
 		expected bool
 	}{
-		{"包含", Bytes([]byte("hello world")), []byte("world"), true},
-		{"不包含", Bytes([]byte("hello world")), []byte("xyz"), false},
-		{"空子序列", Bytes([]byte("hello")), []byte{}, true},
-		{"完全匹配", Bytes([]byte("hello")), []byte("hello"), true},
-		{"空数据", Bytes([]byte{}), []byte("test"), false},
+		{"包含", []byte("hello world"), []byte("world"), true},
+		{"不包含", []byte("hello world"), []byte("xyz"), false},
+		{"空子序列", []byte("hello"), []byte{}, true},
+		{"完全匹配", []byte("hello"), []byte("hello"), true},
+		{"空数据", []byte{}, []byte("test"), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.data.Contains(tt.sub)
+			result := Contains(tt.data, tt.sub)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
 
-func TestBytes_Index(t *testing.T) {
+func TestIndex(t *testing.T) {
 	tests := []struct {
 		name     string
-		data     Bytes
+		data     []byte
 		sub      []byte
 		expected int
 	}{
-		{"找到", Bytes([]byte("hello world")), []byte("world"), 6},
-		{"未找到", Bytes([]byte("hello world")), []byte("xyz"), -1},
-		{"开头", Bytes([]byte("hello")), []byte("hello"), 0},
-		{"结尾", Bytes([]byte("hello")), []byte("lo"), 3},
-		{"空子序列", Bytes([]byte("hello")), []byte{}, 0},
+		{"找到", []byte("hello world"), []byte("world"), 6},
+		{"未找到", []byte("hello world"), []byte("xyz"), -1},
+		{"开头", []byte("hello"), []byte("hello"), 0},
+		{"结尾", []byte("hello"), []byte("lo"), 3},
+		{"空子序列", []byte("hello"), []byte{}, 0},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.data.Index(tt.sub)
+			result := Index(tt.data, tt.sub)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
 
-func TestBytes_HasPrefix(t *testing.T) {
+func TestHasPrefix(t *testing.T) {
 	tests := []struct {
 		name     string
-		data     Bytes
+		data     []byte
 		prefix   []byte
 		expected bool
 	}{
-		{"有前缀", Bytes([]byte("hello world")), []byte("hello"), true},
-		{"无前缀", Bytes([]byte("hello world")), []byte("world"), false},
-		{"空前缀", Bytes([]byte("hello")), []byte{}, true},
-		{"完全匹配", Bytes([]byte("hello")), []byte("hello"), true},
-		{"前缀更长", Bytes([]byte("hi")), []byte("hello"), false},
+		{"有前缀", []byte("hello world"), []byte("hello"), true},
+		{"无前缀", []byte("hello world"), []byte("world"), false},
+		{"空前缀", []byte("hello"), []byte{}, true},
+		{"完全匹配", []byte("hello"), []byte("hello"), true},
+		{"前缀更长", []byte("hi"), []byte("hello"), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.data.HasPrefix(tt.prefix)
+			result := HasPrefix(tt.data, tt.prefix)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
 
-func TestBytes_HasSuffix(t *testing.T) {
+func TestHasSuffix(t *testing.T) {
 	tests := []struct {
 		name     string
-		data     Bytes
+		data     []byte
 		suffix   []byte
 		expected bool
 	}{
-		{"有后缀", Bytes([]byte("hello world")), []byte("world"), true},
-		{"无后缀", Bytes([]byte("hello world")), []byte("hello"), false},
-		{"空后缀", Bytes([]byte("hello")), []byte{}, true},
-		{"完全匹配", Bytes([]byte("hello")), []byte("hello"), true},
-		{"后缀更长", Bytes([]byte("hi")), []byte("hello"), false},
+		{"有后缀", []byte("hello world"), []byte("world"), true},
+		{"无后缀", []byte("hello world"), []byte("hello"), false},
+		{"空后缀", []byte("hello"), []byte{}, true},
+		{"完全匹配", []byte("hello"), []byte("hello"), true},
+		{"后缀更长", []byte("hi"), []byte("hello"), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.data.HasSuffix(tt.suffix)
+			result := HasSuffix(tt.data, tt.suffix)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
