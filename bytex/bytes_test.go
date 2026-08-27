@@ -547,28 +547,40 @@ func TestBytes_Encoding(t *testing.T) {
 	
 	t.Run("Base32", func(t *testing.T) {
 		encoded := data.Base32()
-		// Note: We're using standard base64 encoding as base32 for now, will fix later
-		// This is just a placeholder until we implement proper base32
-		assert.NotEmpty(t, encoded)
+		// 标准 Base32 编码值
+		assert.Equal(t, "NBSWY3DPEB3W64TMMQ======", encoded)
+		
+		// 测试空数据
+		emptyData := Bytes([]byte{})
+		assert.Equal(t, "", emptyData.Base32())
 	})
 	
 	t.Run("Base58", func(t *testing.T) {
 		encoded := data.Base58()
+		// 标准 Base58 编码值（比特币地址常用）
 		assert.Equal(t, "StV1DL6CwTryKyV", encoded)
 		
-		// Test empty input
+		// 测试空输入
 		emptyData := Bytes([]byte{})
 		assert.Equal(t, "", emptyData.Base58())
 		
-		// Test with leading zeros
+		// 测试前导零（Base58 中前导零编码为 '1'）
 		leadingZeroData := Bytes([]byte{0, 0, 'h', 'e', 'l', 'l', 'o'})
-		// Update expected value based on our implementation
+		// 两个前导零编码为 "11"，"hello" 编码为 "Cn8eVZg"
 		assert.Equal(t, "11Cn8eVZg", leadingZeroData.Base58())
 	})
 	
 	t.Run("Base64URL", func(t *testing.T) {
 		encoded := data.Base64URL()
+		// URL 安全的 Base64 编码（与标准 Base64 相同，因为没有特殊字符）
 		assert.Equal(t, "aGVsbG8gd29ybGQ=", encoded)
+		
+		// 测试包含特殊字符的数据（+ 和 / 会被替换为 - 和 _）
+		specialData := Bytes([]byte{0xfb, 0xff, 0xfe})
+		urlEncoded := specialData.Base64URL()
+		// URL 安全编码使用 - 和 _ 替代 + 和 /
+		assert.NotContains(t, urlEncoded, "+")
+		assert.NotContains(t, urlEncoded, "/")
 	})
 }
 
