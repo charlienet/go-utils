@@ -107,12 +107,14 @@ func TestBufferPool_Concurrent(t *testing.T) {
 	var wg sync.WaitGroup
 
 	for range 100 {
-		wg.Go(func() {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 			b := bp.Get()
 			b.WriteString("test data")
 			_ = b.Bytes()
 			bp.Put(b)
-		})
+		}()
 	}
 
 	wg.Wait()

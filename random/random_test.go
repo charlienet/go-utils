@@ -222,157 +222,157 @@ func TestLargeNumbers(t *testing.T) {
 
 // 泛型函数基准测试
 func BenchmarkInt(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_ = Int[int]()
 	}
 }
 
 func BenchmarkIntn(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_ = Intn(100)
 	}
 }
 
 func BenchmarkIntRange(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_ = IntRange(10, 100)
 	}
 }
 
 // 生成器基准测试
 func BenchmarkSecureRandIntn(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_ = SecureGenerator.Intn(100)
 	}
 }
 
 func BenchmarkNormalRandIntn(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_ = NormalGenerator.Intn(100)
 	}
 }
 
 // RandBytes 基准测试
 func BenchmarkRandBytes(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_, _ = RandBytes(32)
 	}
 }
 
 func BenchmarkFastRandBytes(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_ = FastRandBytes(32)
 	}
 }
 
 // 不同长度对比
 func BenchmarkRandBytes_Len8(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_, _ = RandBytes(8)
 	}
 }
 
 func BenchmarkFastRandBytes_Len8(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_ = FastRandBytes(8)
 	}
 }
 
 func BenchmarkRandBytes_Len64(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_, _ = RandBytes(64)
 	}
 }
 
 func BenchmarkFastRandBytes_Len64(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_ = FastRandBytes(64)
 	}
 }
 
 func BenchmarkRandBytes_Len256(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_, _ = RandBytes(256)
 	}
 }
 
 func BenchmarkFastRandBytes_Len256(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_ = FastRandBytes(256)
 	}
 }
 
 func BenchmarkRandBytes_Len1024(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_, _ = RandBytes(1024)
 	}
 }
 
 func BenchmarkFastRandBytes_Len1024(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_ = FastRandBytes(1024)
 	}
 }
 
 // 不同字符集基准测试（长度固定 32）
 func BenchmarkStringGenerate_Digit(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_ = Digit.Generate(32)
 	}
 }
 
 func BenchmarkStringGenerate_Hex(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_ = Hex.Generate(32)
 	}
 }
 
 func BenchmarkStringGenerate_Uppercase(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_ = Uppercase.Generate(32)
 	}
 }
 
 func BenchmarkStringGenerate_AllChars(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_ = AllChars.Generate(32)
 	}
 }
 
 // 不同长度基准测试（字符集固定 AllChars）
 func BenchmarkStringGenerate_Len8(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_ = AllChars.Generate(8)
 	}
 }
 
 func BenchmarkStringGenerate_Len16(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_ = AllChars.Generate(16)
 	}
 }
 
 func BenchmarkStringGenerate_Len32(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_ = AllChars.Generate(32)
 	}
 }
 
 func BenchmarkStringGenerate_Len64(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_ = AllChars.Generate(64)
 	}
 }
 
 func BenchmarkStringGenerate_Len128(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_ = AllChars.Generate(128)
 	}
 }
 
 // 带前缀基准测试
 func BenchmarkStringGenerate_WithPrefix(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_ = AllChars.Generate(32, "ID-")
 	}
 }
@@ -405,14 +405,14 @@ func BenchmarkSecureRandIntn_Parallel(b *testing.B) {
 // 十六进制字符串生成方式对比
 // 方法 1: Hex.Generate(32) - 字符集索引
 func BenchmarkHexString_Generate(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_ = Hex.Generate(32)
 	}
 }
 
 // 方法 2: FastRandBytes(16) + hex.EncodeToString - 字节转十六进制
 func BenchmarkHexString_FastRandBytes(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		bytes := FastRandBytes(16) // 16 字节 = 32 个十六进制字符
 		_ = stdhex.EncodeToString(bytes)
 	}
@@ -420,7 +420,7 @@ func BenchmarkHexString_FastRandBytes(b *testing.B) {
 
 // 方法 3: FastRandBytes(16) + bytex.Bytes.Hex() - bytex 零拷贝转换
 func BenchmarkHexString_BytexHex(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		bytes := FastRandBytes(16)
 		_ = bytex.Bytes(bytes).Hex()
 	}
@@ -428,39 +428,39 @@ func BenchmarkHexString_BytexHex(b *testing.B) {
 
 // 不同长度的十六进制对比
 func BenchmarkHexString_Generate_Len8(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_ = Hex.Generate(8)
 	}
 }
 
 func BenchmarkHexString_FastRandBytes_Len8(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		bytes := FastRandBytes(4)
 		_ = stdhex.EncodeToString(bytes)
 	}
 }
 
 func BenchmarkHexString_Generate_Len64(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_ = Hex.Generate(64)
 	}
 }
 
 func BenchmarkHexString_FastRandBytes_Len64(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		bytes := FastRandBytes(32)
 		_ = stdhex.EncodeToString(bytes)
 	}
 }
 
 func BenchmarkHexString_Generate_Len128(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		_ = Hex.Generate(128)
 	}
 }
 
 func BenchmarkHexString_FastRandBytes_Len128(b *testing.B) {
-	for b.Loop() {
+	for i := 0; i < b.N; i++ {
 		bytes := FastRandBytes(64)
 		_ = stdhex.EncodeToString(bytes)
 	}
