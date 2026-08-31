@@ -44,7 +44,7 @@ func TestPool_Concurrent(t *testing.T) {
 	p := New[int](10, func() int { return 0 })
 	var wg sync.WaitGroup
 
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		wg.Add(1)
 		go func(val int) {
 			defer wg.Done()
@@ -106,15 +106,13 @@ func TestBufferPool_Concurrent(t *testing.T) {
 	bp := NewAllocatedBufferPool(10, 64)
 	var wg sync.WaitGroup
 
-	for i := 0; i < 100; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 100 {
+		wg.Go(func() {
 			b := bp.Get()
 			b.WriteString("test data")
 			_ = b.Bytes()
 			bp.Put(b)
-		}()
+		})
 	}
 
 	wg.Wait()

@@ -9,11 +9,12 @@ Exported Functions:
 Example Usage:
 
 Check if a file exists:
- if fs.Exist("somefile.txt") {
-     fmt.Println("File exists")
- } else {
-     fmt.Println("File does not exist")
- }
+
+	if fs.Exist("somefile.txt") {
+	    fmt.Println("File exists")
+	} else {
+	    fmt.Println("File does not exist")
+	}
 
 Notes:
   - Currently only provides the Exist function for checking file/directory existence

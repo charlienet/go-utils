@@ -17,23 +17,25 @@ Exported Types and Functions:
 Example Usage:
 
 Using generic Pool:
- type MyObject struct {
-     Data string
- }
- 
- factory := func() MyObject { return MyObject{} }
- p := pool.New[MyObject](10, factory)
- 
- obj := p.Get()           // Get object from pool or create new
- // Use obj...
- p.Put(obj)               // Return object to pool
+
+	type MyObject struct {
+	    Data string
+	}
+
+	factory := func() MyObject { return MyObject{} }
+	p := pool.New[MyObject](10, factory)
+
+	obj := p.Get()           // Get object from pool or create new
+	// Use obj...
+	p.Put(obj)               // Return object to pool
 
 Using BufferPool:
- bp := pool.NewBufferPool(10)
- buf := bp.Get()          // Get buffer from pool
- buf.WriteString("test")
- // Use buf...
- bp.Put(buf)              // Return buffer to pool (automatically reset)
+
+	bp := pool.NewBufferPool(10)
+	buf := bp.Get()          // Get buffer from pool
+	buf.WriteString("test")
+	// Use buf...
+	bp.Put(buf)              // Return buffer to pool (automatically reset)
 
 Capacity Limitations:
   - Both Pool and BufferPool have fixed channel-based capacity limits

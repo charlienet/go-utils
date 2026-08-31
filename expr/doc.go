@@ -24,6 +24,7 @@ Fluent API Methods:
   - (*switchCase[T, R]).DefaultF(func() R) R: Lazy evaluation version of Default with function
 
 Examples:
+
 	// Simple ternary expression:
 	// result := expr.Ternary(true, "yes", "no") // returns "yes"
 

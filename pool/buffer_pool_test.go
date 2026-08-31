@@ -18,7 +18,7 @@ func TestBufferPool(t *testing.T) {
 	b.Grow(allocated * 3)
 	p.Put(b)
 
-	for i := 0; i < size; i++ {
+	for range size {
 		p.Put(bytes.NewBuffer(make([]byte, 0, p.a*2)))
 	}
 
