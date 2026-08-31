@@ -13,7 +13,8 @@ func TestStruct2Json(t *testing.T) {
 	}
 
 	p := Person{Name: "John", Age: 30}
-	result := Struct2Json(p)
+	result, err := Struct2Json(p)
+	assert.NoError(t, err)
 	assert.Contains(t, result, "John")
 	assert.Contains(t, result, "30")
 }
@@ -25,7 +26,8 @@ func TestStruct2JsonIndent(t *testing.T) {
 	}
 
 	p := Person{Name: "John", Age: 30}
-	result := Struct2JsonIndent(p)
+	result, err := Struct2JsonIndent(p)
+	assert.NoError(t, err)
 	assert.Contains(t, result, "\n")
 	assert.Contains(t, result, "  ")
 }
@@ -58,8 +60,9 @@ func TestMustStruct2Json_Panic(t *testing.T) {
 }
 
 func TestStruct2Json_Error(t *testing.T) {
-	// channel 不可序列化，应该返回空字符串
-	result := Struct2Json(make(chan int))
+	// channel 不可序列化，应该返回错误
+	result, err := Struct2Json(make(chan int))
+	assert.Error(t, err)
 	assert.Equal(t, "", result)
 }
 
@@ -68,7 +71,8 @@ func TestPascal2Camel_JSON(t *testing.T) {
 		UserName string
 	}{UserName: "john"}
 
-	result := Struct2Json(Pascal2Camel{v})
+	result, err := Struct2Json(Pascal2Camel{v})
+	assert.NoError(t, err)
 	assert.Contains(t, result, "userName")
 }
 
@@ -77,7 +81,8 @@ func TestPascal2Snake_JSON(t *testing.T) {
 		UserName string
 	}{UserName: "john"}
 
-	result := Struct2Json(Pascal2Snake{v})
+	result, err := Struct2Json(Pascal2Snake{v})
+	assert.NoError(t, err)
 	// Pascal2Snake 将 PascalCase 转为 snake_case，但首字母大写保留
 	assert.Contains(t, result, "User_Name")
 }
@@ -87,7 +92,8 @@ func TestPascal2UpperSnake_JSON(t *testing.T) {
 		UserName string
 	}{UserName: "john"}
 
-	result := Struct2Json(Pascal2UpperSnake{v})
+	result, err := Struct2Json(Pascal2UpperSnake{v})
+	assert.NoError(t, err)
 	assert.Contains(t, result, "USER_NAME")
 }
 
@@ -96,7 +102,8 @@ func TestSnake2Camel_JSON(t *testing.T) {
 		"user_name": "john",
 	}
 
-	result := Struct2Json(Snake2Camel{s})
+	result, err := Struct2Json(Snake2Camel{s})
+	assert.NoError(t, err)
 	assert.Contains(t, result, "userName")
 }
 
@@ -105,7 +112,8 @@ func TestSnake2Pascal_JSON(t *testing.T) {
 		"user_name": "john",
 	}
 
-	result := Struct2Json(Snake2Pascal{s})
+	result, err := Struct2Json(Snake2Pascal{s})
+	assert.NoError(t, err)
 	assert.Contains(t, result, "UserName")
 }
 
@@ -114,7 +122,8 @@ func TestCamel2Pascal_JSON(t *testing.T) {
 		UserName string
 	}{UserName: "john"}
 
-	result := Struct2Json(Camel2Pascal{v})
+	result, err := Struct2Json(Camel2Pascal{v})
+	assert.NoError(t, err)
 	assert.Contains(t, result, "UserName")
 }
 
@@ -128,7 +137,8 @@ func TestNestedStruct_JSON(t *testing.T) {
 	}
 
 	p := Person{Name: "John", Address: Address{City: "Beijing"}}
-	result := Struct2Json(Pascal2Camel{p})
+	result, err := Struct2Json(Pascal2Camel{p})
+	assert.NoError(t, err)
 	assert.Contains(t, result, "name")
 	assert.Contains(t, result, "address")
 	assert.Contains(t, result, "city")
@@ -139,7 +149,8 @@ func TestSlice_JSON(t *testing.T) {
 		Items []string
 	}{Items: []string{"a", "b", "c"}}
 
-	result := Struct2Json(Pascal2Camel{v})
+	result, err := Struct2Json(Pascal2Camel{v})
+	assert.NoError(t, err)
 	assert.Contains(t, result, "items")
 	assert.Contains(t, result, "\"a\"")
 }
@@ -151,12 +162,14 @@ func TestPointer_JSON(t *testing.T) {
 
 	name := "John"
 	p := Person{Name: &name}
-	result := Struct2Json(Pascal2Camel{p})
+	result, err := Struct2Json(Pascal2Camel{p})
+	assert.NoError(t, err)
 	assert.Contains(t, result, "John")
 
 	// nil 指针
 	p2 := Person{Name: nil}
-	result2 := Struct2Json(Pascal2Camel{p2})
+	result2, err := Struct2Json(Pascal2Camel{p2})
+	assert.NoError(t, err)
 	assert.Contains(t, result2, "null")
 }
 
@@ -166,7 +179,8 @@ func TestMap_JSON(t *testing.T) {
 		"age":       30,
 	}
 
-	result := Struct2Json(Snake2Camel{m})
+	result, err := Struct2Json(Snake2Camel{m})
+	assert.NoError(t, err)
 	assert.Contains(t, result, "userName")
 }
 
@@ -199,7 +213,8 @@ func TestJsonTag_Override(t *testing.T) {
 	}
 
 	p := Person{Name: "John"}
-	result := Struct2Json(Pascal2Camel{p})
+	result, err := Struct2Json(Pascal2Camel{p})
+	assert.NoError(t, err)
 	// 有 json tag 时应该使用 tag 名
 	assert.Contains(t, result, "custom_name")
 }
@@ -211,7 +226,8 @@ func TestJsonTag_Ignore(t *testing.T) {
 	}
 
 	p := Person{Name: "John", Secret: "hidden"}
-	result := Struct2Json(p)
+	result, err := Struct2Json(p)
+	assert.NoError(t, err)
 	assert.Contains(t, result, "John")
 	assert.NotContains(t, result, "hidden")
 }

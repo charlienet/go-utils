@@ -1,6 +1,6 @@
 package json
 
-import 	"github.com/charlienet/go-utils/bytex"
+import "github.com/charlienet/go-utils/bytex"
 
 // MustStruct2JsonIndent 结构转换为带格式字符串
 func MustStruct2JsonIndent(obj any) string {
@@ -22,13 +22,19 @@ func MustStruct2Json(obj any) string {
 }
 
 // Struct2JsonIndent 结构转换为带格式字符串
-func Struct2JsonIndent(obj any) string {
-	b, _ := MarshalIndent(obj, "", "  ")
-	return bytex.BytesToString(b)
+func Struct2JsonIndent(obj any) (string, error) {
+	b, err := MarshalIndent(obj, "", "  ")
+	if err != nil {
+		return "", err
+	}
+	return bytex.BytesToString(b), nil
 }
 
 // Struct2Json 结构转换为json字符串
-func Struct2Json(obj any) string {
-	b, _ := Marshal(obj)
-	return bytex.BytesToString(b)
+func Struct2Json(obj any) (string, error) {
+	b, err := Marshal(obj)
+	if err != nil {
+		return "", err
+	}
+	return bytex.BytesToString(b), nil
 }

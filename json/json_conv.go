@@ -2,7 +2,10 @@ package json
 
 import (
 	"bytes"
+	"encoding/base64"
 	ejson "encoding/json"
+	"errors"
+	"fmt"
 	"reflect"
 	"sort"
 	"strings"
@@ -16,7 +19,76 @@ var (
 )
 
 // json.Marshaler 接口的反射类型
-var jsonMarshalerType = reflect.TypeOf((*ejson.Marshaler)(nil)).Elem()
+var jsonMarshalerType = reflect.TypeFor[ejson.Marshaler]()
+
+const maxDepth = 10000 // 最大递归深度
+
+type encodeState struct {
+	convert  func(string) string
+	keyCache map[string][]byte    // M3: origName → JSON 转义后的键（含引号）
+	visited  map[uintptr]struct{} // H5: 循环引用检测
+	depth    uint                 // H5: 递归深度
+}
+
+func (s *encodeState) fieldKeyJSON(f *field) []byte {
+	if f.fromTag {
+		cacheKey := "\x00" + f.name
+		if cached, ok := s.keyCache[cacheKey]; ok {
+			return cached
+		}
+		b, _ := Marshal(f.name)
+		s.keyCache[cacheKey] = b
+		return b
+	}
+	if cached, ok := s.keyCache[f.origName]; ok {
+		return cached
+	}
+	b, _ := Marshal(s.convert(f.origName))
+	s.keyCache[f.origName] = b
+	return b
+}
+
+func (s *encodeState) mapKeyJSON(k string) []byte {
+	if cached, ok := s.keyCache[k]; ok {
+		return cached
+	}
+	b, _ := Marshal(s.convert(k))
+	s.keyCache[k] = b
+	return b
+}
+
+var errCycle = errors.New("json: unsupported value: cycle detected")
+
+func isEmptyValue(v reflect.Value) bool {
+	switch v.Kind() {
+	case reflect.Array, reflect.Map, reflect.Slice, reflect.String:
+		return v.Len() == 0
+	case reflect.Bool:
+		return !v.Bool()
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return v.Int() == 0
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		return v.Uint() == 0
+	case reflect.Float32, reflect.Float64:
+		return v.Float() == 0
+	case reflect.Interface, reflect.Pointer:
+		return v.IsNil()
+	}
+	return false
+}
+
+func marshalerOf(val reflect.Value) (ejson.Marshaler, bool) {
+	if val.Type().Implements(jsonMarshalerType) {
+		if val.Kind() == reflect.Pointer && val.IsNil() {
+			return nil, false
+		}
+		return val.Interface().(ejson.Marshaler), true
+	}
+	if val.CanAddr() && reflect.PointerTo(val.Type()).Implements(jsonMarshalerType) {
+		return val.Addr().Interface().(ejson.Marshaler), true
+	}
+	return nil, false
+}
 
 // field 表示结构体的一个导出字段（经冲突解决后的最终字段）
 type field struct {
@@ -70,83 +142,158 @@ func (c Pascal2UpperSnake) MarshalJSON() ([]byte, error) {
 
 // marshalJSON 是公共入口，调用 encodeValue 递归处理值
 func marshalJSON(v any, convert func(string) string) ([]byte, error) {
-	return encodeValue(reflect.ValueOf(v), convert)
+	state := &encodeState{
+		convert:  convert,
+		keyCache: make(map[string][]byte),
+		visited:  make(map[uintptr]struct{}),
+		depth:    0,
+	}
+	return encodeValue(reflect.ValueOf(v), state)
 }
 
 // encodeValue 递归处理任意值，返回其 JSON 片段
-func encodeValue(val reflect.Value, convert func(string) string) ([]byte, error) {
+func encodeValue(val reflect.Value, state *encodeState) ([]byte, error) {
+	if state.depth > maxDepth {
+		return nil, errCycle
+	}
 	if !val.IsValid() {
 		return []byte("null"), nil
 	}
 
-	// 解引用指针和接口
-	for val.Kind() == reflect.Ptr || val.Kind() == reflect.Interface {
-		if val.IsNil() {
-			return []byte("null"), nil
-		}
-		val = val.Elem()
-	}
-
-	// 检查是否实现了 json.Marshaler
-	if val.Type().Implements(jsonMarshalerType) {
-		return val.Interface().(ejson.Marshaler).MarshalJSON()
+	// H3: 解引用前检查 Marshaler
+	if m, ok := marshalerOf(val); ok {
+		return m.MarshalJSON()
 	}
 
 	switch val.Kind() {
-	case reflect.Struct:
-		return encodeStruct(val, convert)
+	case reflect.Pointer:
+		if val.IsNil() {
+			return []byte("null"), nil
+		}
+		ptr := val.Pointer()
+		if _, seen := state.visited[ptr]; seen {
+			return nil, errCycle
+		}
+		state.visited[ptr] = struct{}{}
+		state.depth++
+		b, err := encodeValue(val.Elem(), state)
+		state.depth--
+		delete(state.visited, ptr)
+		return b, err
+
+	case reflect.Interface:
+		if val.IsNil() {
+			return []byte("null"), nil
+		}
+		return encodeValue(val.Elem(), state)
+
+	case reflect.Slice:
+		if val.Type().Elem().Kind() == reflect.Uint8 {
+			if val.IsNil() {
+				return []byte("null"), nil
+			}
+			ptr := val.Pointer()
+			if _, seen := state.visited[ptr]; seen {
+				return nil, errCycle
+			}
+			state.visited[ptr] = struct{}{}
+			encoded := base64.StdEncoding.EncodeToString(val.Bytes())
+			b, err := Marshal(encoded)
+			delete(state.visited, ptr)
+			return b, err
+		}
+		if val.IsNil() {
+			return []byte("null"), nil
+		}
+		ptr := val.Pointer()
+		if _, seen := state.visited[ptr]; seen {
+			return nil, errCycle
+		}
+		state.visited[ptr] = struct{}{}
+		state.depth++
+		b, err := encodeSlice(val, state)
+		state.depth--
+		delete(state.visited, ptr)
+		return b, err
+
 	case reflect.Map:
-		return encodeMap(val, convert)
-	case reflect.Slice, reflect.Array:
-		return encodeSlice(val, convert)
+		if val.IsNil() {
+			return []byte("null"), nil
+		}
+		ptr := val.Pointer()
+		if _, seen := state.visited[ptr]; seen {
+			return nil, errCycle
+		}
+		state.visited[ptr] = struct{}{}
+		state.depth++
+		b, err := encodeMap(val, state)
+		state.depth--
+		delete(state.visited, ptr)
+		return b, err
+
+	case reflect.Struct:
+		state.depth++
+		b, err := encodeStruct(val, state)
+		state.depth--
+		return b, err
+
+	case reflect.Array:
+		state.depth++
+		b, err := encodeSlice(val, state)
+		state.depth--
+		return b, err
+
 	default:
-		// 基本类型直接使用标准库编码
 		return Marshal(val.Interface())
 	}
 }
 
 // encodeStruct 编码结构体，键名优先使用 tag，否则由 convert 转换
-func encodeStruct(val reflect.Value, convert func(string) string) ([]byte, error) {
+func encodeStruct(val reflect.Value, state *encodeState) ([]byte, error) {
 	typ := val.Type()
 	fields := cachedTypeFields(typ)
 
 	buf := &bytes.Buffer{}
 	buf.WriteByte('{')
 	first := true
+	seen := make(map[string]bool, len(fields))
 
 	for _, f := range fields {
-		// 获取字段值
 		fieldVal := val.FieldByIndex(f.index)
 		if !fieldVal.IsValid() {
 			continue
 		}
 
-		// 决定最终的键名
-		var key string
-		if f.fromTag {
-			key = f.name // 直接使用 tag 中的名称
-		} else {
-			key = convert(f.origName) // 应用命名风格转换
+		// H1: omitempty
+		if f.omitempty && isEmptyValue(fieldVal) {
+			continue
 		}
 
-		// 编码字段值（递归）
-		elemBytes, err := encodeValue(fieldVal, convert)
+		var finalKey string
+		if f.fromTag {
+			finalKey = f.name
+		} else {
+			finalKey = state.convert(f.origName)
+		}
+
+		// H4: 碰撞检测
+		if seen[finalKey] {
+			return nil, fmt.Errorf("json: duplicate key %q after name conversion", finalKey)
+		}
+		seen[finalKey] = true
+
+		elemBytes, err := encodeValue(fieldVal, state)
 		if err != nil {
 			return nil, err
 		}
 
-		// 写入键值对
 		if !first {
 			buf.WriteByte(',')
 		}
 		first = false
 
-		// 键名需 JSON 转义
-		keyBytes, err := Marshal(key)
-		if err != nil {
-			return nil, err
-		}
-		buf.Write(keyBytes) // 已包含引号
+		keyBytes := state.fieldKeyJSON(&f)
+		buf.Write(keyBytes)
 		buf.WriteByte(':')
 		buf.Write(elemBytes)
 	}
@@ -156,26 +303,34 @@ func encodeStruct(val reflect.Value, convert func(string) string) ([]byte, error
 }
 
 // encodeMap 编码 map，键名经过 convert 转换（不处理 tag），值递归处理
-func encodeMap(val reflect.Value, convert func(string) string) ([]byte, error) {
+func encodeMap(val reflect.Value, state *encodeState) ([]byte, error) {
 	// 非字符串键的 map 在 JSON 中不支持
 	if val.Type().Key().Kind() != reflect.String {
 		return nil, &ejson.UnsupportedTypeError{Type: val.Type()}
 	}
 
+	keys := make([]string, 0, val.Len())
+	iter := val.MapRange()
+	for iter.Next() {
+		keys = append(keys, iter.Key().String())
+	}
+	sort.Strings(keys)
+
 	buf := &bytes.Buffer{}
 	buf.WriteByte('{')
+	seen := make(map[string]bool, len(keys))
 	first := true
-	iter := val.MapRange()
 
-	for iter.Next() {
-		k := iter.Key().String()
-		v := iter.Value()
+	for _, k := range keys {
+		v := val.MapIndex(reflect.ValueOf(k))
+		convertedKey := state.convert(k)
 
-		// 键名经过转换函数处理
-		convertedKey := convert(k)
+		if seen[convertedKey] {
+			return nil, fmt.Errorf("json: duplicate key %q after name conversion in map", convertedKey)
+		}
+		seen[convertedKey] = true
 
-		// 编码值
-		valueBytes, err := encodeValue(v, convert)
+		valueBytes, err := encodeValue(v, state)
 		if err != nil {
 			return nil, err
 		}
@@ -185,12 +340,8 @@ func encodeMap(val reflect.Value, convert func(string) string) ([]byte, error) {
 		}
 		first = false
 
-		// 将转换后的键名 JSON 转义后写入
-		keyBytes, err := Marshal(convertedKey)
-		if err != nil {
-			return nil, err
-		}
-		buf.Write(keyBytes) // 已包含引号
+		keyBytes := state.mapKeyJSON(k)
+		buf.Write(keyBytes)
 		buf.WriteByte(':')
 		buf.Write(valueBytes)
 	}
@@ -200,12 +351,12 @@ func encodeMap(val reflect.Value, convert func(string) string) ([]byte, error) {
 }
 
 // encodeSlice 编码切片或数组
-func encodeSlice(val reflect.Value, convert func(string) string) ([]byte, error) {
+func encodeSlice(val reflect.Value, state *encodeState) ([]byte, error) {
 	buf := &bytes.Buffer{}
 	buf.WriteByte('[')
 	for i := 0; i < val.Len(); i++ {
 		elem := val.Index(i)
-		elemBytes, err := encodeValue(elem, convert)
+		elemBytes, err := encodeValue(elem, state)
 		if err != nil {
 			return nil, err
 		}
@@ -235,13 +386,10 @@ func typeFields(typ reflect.Type) []field {
 	var fields []field
 
 	// 递归收集所有字段（包括匿名结构体提升）
-	var visit func(t reflect.Type, baseIndex []int, visited map[reflect.Type]bool)
-	visit = func(t reflect.Type, baseIndex []int, visited map[reflect.Type]bool) {
-		if visited[t] {
-			return
-		}
-		visited[t] = true
-
+	// 移除 visited 检查，允许同一嵌入类型通过不同路径被多次访问
+	// 这样在冲突解决阶段可以正确检测同深度冲突并丢弃字段
+	var visit func(t reflect.Type, baseIndex []int)
+	visit = func(t reflect.Type, baseIndex []int) {
 		for i := 0; i < t.NumField(); i++ {
 			f := t.Field(i)
 
@@ -277,11 +425,21 @@ func typeFields(typ reflect.Type) []field {
 				}
 				// 无 tag，展开匿名字段
 				ft := f.Type
-				if ft.Kind() == reflect.Ptr {
+				if ft.Kind() == reflect.Pointer {
 					ft = ft.Elem()
 				}
 				if ft.Kind() == reflect.Struct {
-					visit(ft, index, visited)
+					visit(ft, index)
+				} else {
+					// 非 struct 匿名内嵌：将其作为普通字段处理
+					fields = append(fields, field{
+						name:      f.Name,
+						origName:  f.Name,
+						index:     index,
+						typ:       f.Type,
+						omitempty: false,
+						fromTag:   false,
+					})
 				}
 				continue
 			}
@@ -309,7 +467,7 @@ func typeFields(typ reflect.Type) []field {
 		}
 	}
 
-	visit(typ, nil, make(map[reflect.Type]bool))
+	visit(typ, nil)
 
 	// 按名称分组，解决冲突
 	byName := make(map[string][]field)
@@ -317,28 +475,51 @@ func typeFields(typ reflect.Type) []field {
 		byName[f.name] = append(byName[f.name], f)
 	}
 
-	// 为每个名称选择胜出的字段
+	// 为每个名称选择胜出的字段（标准库规则）
 	result := make([]field, 0, len(byName))
 	for _, cands := range byName {
 		if len(cands) == 1 {
 			result = append(result, cands[0])
 			continue
 		}
-		// 选择深度最小的（索引长度最小）
-		best := cands[0]
+
+		// 找最小深度
+		minDepth := len(cands[0].index)
 		for _, c := range cands[1:] {
-			if len(c.index) < len(best.index) {
-				best = c
-				continue
-			}
-			if len(c.index) == len(best.index) {
-				// 深度相同，按索引字典序比较，选更小的（声明顺序靠前）
-				if lessIndex(c.index, best.index) {
-					best = c
-				}
+			if len(c.index) < minDepth {
+				minDepth = len(c.index)
 			}
 		}
-		result = append(result, best)
+
+		// 最小深度的候选
+		minDepthCands := make([]field, 0)
+		for _, c := range cands {
+			if len(c.index) == minDepth {
+				minDepthCands = append(minDepthCands, c)
+			}
+		}
+
+		// 如果最小深度只有一个，选中
+		if len(minDepthCands) == 1 {
+			result = append(result, minDepthCands[0])
+			continue
+		}
+
+		// 最小深度有多个，统计有 tag 的
+		taggedCands := make([]field, 0)
+		for _, c := range minDepthCands {
+			if c.fromTag {
+				taggedCands = append(taggedCands, c)
+			}
+		}
+
+		// 如果有 tag 的唯一，选中
+		if len(taggedCands) == 1 {
+			result = append(result, taggedCands[0])
+			continue
+		}
+
+		// 否则丢弃（不添加到 result）
 	}
 
 	// 按深度和索引排序，使输出顺序与标准库一致

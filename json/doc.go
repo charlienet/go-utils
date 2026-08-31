@@ -29,13 +29,13 @@ Package json 提供增强的 JSON 序列化功能，支持标准库和 jsoniter 
 		Name string `json:"name"`
 		Age  int    `json:"age"`
 	}
-	
+
 	p := Person{Name: "John", Age: 30}
 	data, err := json.Marshal(p)
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	var p2 Person
 	err = json.Unmarshal(data, &p2)
 
@@ -45,13 +45,13 @@ Package json 提供增强的 JSON 序列化功能，支持标准库和 jsoniter 
 		UserAge  int
 		Email    string
 	}
-	
+
 	user := User{
 		UserName: "john_doe",
 		UserAge:  30,
 		Email:    "john@example.com",
 	}
-	
+
 	// 自动将字段名从帕斯卡转为驼峰
 	jsonData := json.MustStruct2Json(json.Pascal2Camel{user})
 	// 输出: {"userName":"john_doe","userAge":30,"email":"john@example.com"}
@@ -61,7 +61,7 @@ Package json 提供增强的 JSON 序列化功能，支持标准库和 jsoniter 
 		"user_name": "jane",
 		"email_addr": "jane@example.com",
 	}
-	
+
 	jsonData = json.MustStruct2Json(json.Snake2Camel{m})
 	// 输出: {"userName":"jane","emailAddr":"jane@example.com"}
 
@@ -70,9 +70,10 @@ Package json 提供增强的 JSON 序列化功能，支持标准库和 jsoniter 
 	// go build ./...               # 使用标准库（默认）
 
 注意事项：
-- 当使用 json tag 时，会优先使用 tag 中定义的名称而非转换函数
-- 命名风格转换支持嵌套结构体、map 和 slice
-- 使用 jsoniter 模式可以获得更好的性能
-- Marshal/Unmarshal 函数的行为与标准库完全一致
+- 循环引用检测：会检测并拒绝循环引用的序列化（返回 errCycle）
+- 最大递归深度：限制为 10000 层，防止栈溢出
+- 命名风格转换后键冲突：转换后会检测键冲突，冲突时返回错误
+- omitempty 支持：支持 omitempty tag，零值字段会被忽略
+- []byte 特殊处理：[]byte 类型会被编码为 base64 字符串
 */
 package json
