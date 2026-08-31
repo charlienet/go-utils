@@ -90,16 +90,16 @@ func (r *Reader) Peek(n int) (Bytes, error) {
 		return nil, err
 	}
 	// 恢复位置
-	r.Seek(pos, io.SeekStart)
+	_, _ = r.Seek(pos, io.SeekStart)
 	return buf, nil
 }
 
 // ResetTo 重置读取位置到指定偏移
 func (r *Reader) ResetTo(offset int64) {
-	r.Seek(offset, io.SeekStart)
+	_, _ = r.Seek(offset, io.SeekStart)
 }
 
 // Reset 重置读取位置到开头
 func (r *Reader) Reset() {
-	r.Seek(0, io.SeekStart)
+	_, _ = r.Seek(0, io.SeekStart)
 }

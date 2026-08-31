@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/base32"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"strconv"
@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	hexTable    = "0123456789ABCDEF"
+	hexTable      = "0123456789ABCDEF"
 	lowerHexTable = "0123456789abcdef"
 )
 
@@ -46,7 +46,6 @@ func FromBase64String(s string) (Bytes, error) {
 	b, err := base64.StdEncoding.DecodeString(s)
 	return Bytes(b), err
 }
-
 
 // FromUint64 将 uint64 转换为字节切片。
 // endian 参数指定字节序：binary.BigEndian 或 binary.LittleEndian。
@@ -131,20 +130,20 @@ func (r Bytes) Base32() string {
 // Base58 字母表：123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz
 func (r Bytes) Base58() string {
 	const alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-	
+
 	if len(r) == 0 {
 		return ""
 	}
-	
+
 	// 计算前导零的数量
 	zeros := 0
 	for zeros < len(r) && r[zeros] == 0 {
 		zeros++
 	}
-	
+
 	// 将字节转换为 base58 数字
 	b58 := make([]int, len(r)*138/100+1) // log(256)/log(58), rounded up
-	
+
 	for _, digit := range r {
 		carry := int(digit)
 		for j := len(b58) - 1; j >= 0; j-- {
@@ -153,27 +152,27 @@ func (r Bytes) Base58() string {
 			carry /= 58
 		}
 	}
-	
+
 	// 找到第一个非零数字
 	start := 0
 	for start < len(b58) && b58[start] == 0 {
 		start++
 	}
-	
+
 	// 构建结果字符串
 	var result strings.Builder
 	result.Grow(zeros + len(b58) - start)
-	
+
 	// 添加前导 '1' (代表零)
 	for i := 0; i < zeros; i++ {
 		result.WriteByte(alphabet[0])
 	}
-	
+
 	// 添加实际的 base58 编码
 	for i := start; i < len(b58); i++ {
 		result.WriteByte(alphabet[b58[i]])
 	}
-	
+
 	return result.String()
 }
 
@@ -328,12 +327,8 @@ func (r *Bytes) UnmarshalText(data []byte) error {
 
 // Join 拼接多个字节切片，使用 sep 分隔
 func Join(sep []byte, items ...[]byte) Bytes {
-	var result [][]byte
-	for _, item := range items {
-		result = append(result, item)
-	}
-	joined := bytes.Join(result, sep)
-	return Bytes(joined)
+	result := bytes.Join(items, sep)
+	return Bytes(result)
 }
 
 // Split 分割字节切片
@@ -370,10 +365,7 @@ func (r Bytes) HexDumpWidth(width int) string {
 
 	var buf bytes.Buffer
 	for i := 0; i < len(r); i += width {
-		end := i + width
-		if end > len(r) {
-			end = len(r)
-		}
+		end := min(i+width, len(r))
 		for j := i; j < end; j++ {
 			if j > i {
 				buf.WriteByte(' ')
@@ -406,14 +398,14 @@ func (r Bytes) Slice(start, end int) Bytes {
 	} else if start > len(r) {
 		start = len(r)
 	}
-	
+
 	// 调整 end
 	if end < start {
 		end = start
 	} else if end > len(r) {
 		end = len(r)
 	}
-	
+
 	return r[start:end]
 }
 

@@ -544,37 +544,37 @@ func TestBytes_RoundTrip(t *testing.T) {
 
 func TestBytes_Encoding(t *testing.T) {
 	data := Bytes([]byte("hello world"))
-	
+
 	t.Run("Base32", func(t *testing.T) {
 		encoded := data.Base32()
 		// 标准 Base32 编码值
 		assert.Equal(t, "NBSWY3DPEB3W64TMMQ======", encoded)
-		
+
 		// 测试空数据
 		emptyData := Bytes([]byte{})
 		assert.Equal(t, "", emptyData.Base32())
 	})
-	
+
 	t.Run("Base58", func(t *testing.T) {
 		encoded := data.Base58()
 		// 标准 Base58 编码值（比特币地址常用）
 		assert.Equal(t, "StV1DL6CwTryKyV", encoded)
-		
+
 		// 测试空输入
 		emptyData := Bytes([]byte{})
 		assert.Equal(t, "", emptyData.Base58())
-		
+
 		// 测试前导零（Base58 中前导零编码为 '1'）
 		leadingZeroData := Bytes([]byte{0, 0, 'h', 'e', 'l', 'l', 'o'})
 		// 两个前导零编码为 "11"，"hello" 编码为 "Cn8eVZg"
 		assert.Equal(t, "11Cn8eVZg", leadingZeroData.Base58())
 	})
-	
+
 	t.Run("Base64URL", func(t *testing.T) {
 		encoded := data.Base64URL()
 		// URL 安全的 Base64 编码（与标准 Base64 相同，因为没有特殊字符）
 		assert.Equal(t, "aGVsbG8gd29ybGQ=", encoded)
-		
+
 		// 测试包含特殊字符的数据（+ 和 / 会被替换为 - 和 _）
 		specialData := Bytes([]byte{0xfb, 0xff, 0xfe})
 		urlEncoded := specialData.Base64URL()
@@ -589,74 +589,74 @@ func TestBytes_ByteOperations(t *testing.T) {
 		data := Bytes([]byte("hello"))
 		reversed := data.Reverse()
 		assert.Equal(t, "olleh", string(reversed))
-		
+
 		// Test empty
 		empty := Bytes([]byte{}).Reverse()
 		assert.Equal(t, "", string(empty))
-		
+
 		// Test single character
 		single := Bytes([]byte("a")).Reverse()
 		assert.Equal(t, "a", string(single))
 	})
-	
+
 	t.Run("Slice", func(t *testing.T) {
 		data := Bytes([]byte("hello world"))
-		
+
 		// Normal slice
 		sliced := data.Slice(0, 5)
 		assert.Equal(t, "hello", string(sliced))
-		
+
 		// Slice with bounds adjustment
-		sliced = data.Slice(-1, 5)  // start adjusted to 0
+		sliced = data.Slice(-1, 5) // start adjusted to 0
 		assert.Equal(t, "hello", string(sliced))
-		
-		sliced = data.Slice(6, 100)  // end adjusted to len
+
+		sliced = data.Slice(6, 100) // end adjusted to len
 		assert.Equal(t, "world", string(sliced))
-		
-		sliced = data.Slice(100, 200)  // both adjusted to empty
+
+		sliced = data.Slice(100, 200) // both adjusted to empty
 		assert.Equal(t, "", string(sliced))
-		
-		sliced = data.Slice(5, 5)  // same start and end
+
+		sliced = data.Slice(5, 5) // same start and end
 		assert.Equal(t, "", string(sliced))
 	})
-	
+
 	t.Run("Trim", func(t *testing.T) {
 		data := Bytes([]byte("!!!hello!!!"))
 		trimmed := data.Trim([]byte("!"))
 		assert.Equal(t, "hello", string(trimmed))
-		
+
 		// Test empty
 		empty := Bytes([]byte{}).Trim([]byte("!"))
 		assert.Equal(t, "", string(empty))
-		
+
 		// Test no trim needed
 		noTrim := Bytes([]byte("hello")).Trim([]byte("!"))
 		assert.Equal(t, "hello", string(noTrim))
 	})
-	
+
 	t.Run("TrimLeft", func(t *testing.T) {
 		data := Bytes([]byte("!!!hello!!!"))
 		trimmed := data.TrimLeft([]byte("!"))
 		assert.Equal(t, "hello!!!", string(trimmed))
-		
+
 		// Test empty
 		empty := Bytes([]byte{}).TrimLeft([]byte("!"))
 		assert.Equal(t, "", string(empty))
-		
+
 		// Test no trim needed
 		noTrim := Bytes([]byte("hello")).TrimLeft([]byte("!"))
 		assert.Equal(t, "hello", string(noTrim))
 	})
-	
+
 	t.Run("TrimRight", func(t *testing.T) {
 		data := Bytes([]byte("!!!hello!!!"))
 		trimmed := data.TrimRight([]byte("!"))
 		assert.Equal(t, "!!!hello", string(trimmed))
-		
+
 		// Test empty
 		empty := Bytes([]byte{}).TrimRight([]byte("!"))
 		assert.Equal(t, "", string(empty))
-		
+
 		// Test no trim needed
 		noTrim := Bytes([]byte("hello")).TrimRight([]byte("!"))
 		assert.Equal(t, "hello", string(noTrim))
@@ -667,53 +667,53 @@ func TestUtilities(t *testing.T) {
 	t.Run("Join", func(t *testing.T) {
 		result := Join([]byte(","), []byte("a"), []byte("b"), []byte("c"))
 		assert.Equal(t, "a,b,c", string(result))
-		
+
 		// Empty items
 		result = Join([]byte(","), []byte(""), []byte("b"), []byte(""))
 		assert.Equal(t, ",b,", string(result))
-		
+
 		// Empty separator
 		result = Join([]byte(""), []byte("a"), []byte("b"), []byte("c"))
 		assert.Equal(t, "abc", string(result))
-		
+
 		// Single item
 		result = Join([]byte(","), []byte("a"))
 		assert.Equal(t, "a", string(result))
-		
+
 		// No items
 		result = Join([]byte(","))
 		assert.Equal(t, "", string(result))
 	})
-	
+
 	t.Run("Split", func(t *testing.T) {
 		result := Split([]byte("a,b,c"), []byte(","))
 		expected := []Bytes{[]byte("a"), []byte("b"), []byte("c")}
 		assert.Equal(t, expected, result)
-		
+
 		// Split with empty parts
 		result = Split([]byte("a,,c"), []byte(","))
 		expected = []Bytes{[]byte("a"), []byte(""), []byte("c")}
 		assert.Equal(t, expected, result)
-		
+
 		// No separator found
 		result = Split([]byte("abc"), []byte(","))
 		expected = []Bytes{[]byte("abc")}
 		assert.Equal(t, expected, result)
-		
+
 		// Empty input
 		result = Split([]byte(""), []byte(","))
 		expected = []Bytes{[]byte("")}
 		assert.Equal(t, expected, result)
 	})
-	
+
 	t.Run("Repeat", func(t *testing.T) {
 		result := Repeat([]byte("A"), 5)
 		assert.Equal(t, "AAAAA", string(result))
-		
+
 		// Zero count
 		result = Repeat([]byte("A"), 0)
 		assert.Equal(t, "", string(result))
-		
+
 		// Multiple bytes
 		result = Repeat([]byte("AB"), 3)
 		assert.Equal(t, "ABABAB", string(result))

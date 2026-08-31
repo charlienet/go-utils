@@ -40,7 +40,7 @@ func (w *Writer) Reset() {
 func (w *Writer) WriteUint16(v uint16, order binary.ByteOrder) error {
 	var buf [2]byte
 	order.PutUint16(buf[:], v)
-	_, err := w.Buffer.Write(buf[:])
+	_, err := w.Write(buf[:])
 	return err
 }
 
@@ -48,7 +48,7 @@ func (w *Writer) WriteUint16(v uint16, order binary.ByteOrder) error {
 func (w *Writer) WriteUint32(v uint32, order binary.ByteOrder) error {
 	var buf [4]byte
 	order.PutUint32(buf[:], v)
-	_, err := w.Buffer.Write(buf[:])
+	_, err := w.Write(buf[:])
 	return err
 }
 
@@ -56,13 +56,13 @@ func (w *Writer) WriteUint32(v uint32, order binary.ByteOrder) error {
 func (w *Writer) WriteUint64(v uint64, order binary.ByteOrder) error {
 	var buf [8]byte
 	order.PutUint64(buf[:], v)
-	_, err := w.Buffer.Write(buf[:])
+	_, err := w.Write(buf[:])
 	return err
 }
 
 // WriteBytes 写入 Bytes 数据
 func (w *Writer) WriteBytes(b Bytes) error {
-	_, err := w.Buffer.Write(b)
+	_, err := w.Write(b)
 	return err
 }
 

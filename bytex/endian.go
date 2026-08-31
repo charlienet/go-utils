@@ -78,7 +78,7 @@ func (e endian) BytesToUint64(data []byte) (uint64, error) {
 
 	// 创建一个8字节的缓冲区并填充数据
 	buf := make([]byte, 8)
-	
+
 	if e == BigEndian {
 		// 对于大端序，在前面补零
 		copy(buf[8-len(data):], data)
@@ -89,5 +89,3 @@ func (e endian) BytesToUint64(data []byte) (uint64, error) {
 		return binary.LittleEndian.Uint64(buf), nil
 	}
 }
-
-

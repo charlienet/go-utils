@@ -259,7 +259,7 @@ func TestEndian_RoundTrip(t *testing.T) {
 	for _, v := range values {
 		// BigEndian
 		bytes := make([]byte, 8)
-		for i := 0; i < 8; i++ {
+		for i := range 8 {
 			bytes[7-i] = byte(v >> (i * 8))
 		}
 		result, err := BigEndian.BytesToUint64(bytes)
@@ -267,7 +267,7 @@ func TestEndian_RoundTrip(t *testing.T) {
 		assert.Equal(t, v, result)
 
 		// LittleEndian
-		for i := 0; i < 8; i++ {
+		for i := range 8 {
 			bytes[i] = byte(v >> (i * 8))
 		}
 		result, err = LittleEndian.BytesToUint64(bytes)
@@ -310,7 +310,7 @@ func TestBytes_Open(t *testing.T) {
 			assert.NotNil(t, reader)
 
 			// 验证实现了 io.Reader
-			var _ io.Reader = reader
+			_ = reader
 
 			// 读取全部内容
 			result, err := io.ReadAll(reader)
