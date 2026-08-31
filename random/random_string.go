@@ -1,9 +1,12 @@
 package random
 
 import (
-	"strings"
-
+	"crypto/rand"
+	"encoding/binary"
 	"github.com/charlienet/go-utils/bytex"
+	"io"
+	mrndv2 "math/rand/v2"
+	"strings"
 )
 
 const (
@@ -14,13 +17,11 @@ const (
 	letter    = uppercase + lowercase
 	allChars  = uppercase + lowercase + digit
 	hex       = digit + "ABCDEF"
-	_         = allChars + "/+"
 )
 
 type charScope struct {
 	bytes  []byte
 	length int
-	max    int
 	bits   int
 	mask   int
 }
@@ -49,46 +50,68 @@ func StringScope(str string) *charScope {
 		scope.mask = 1<<scope.bits - 1
 	}
 
-	scope.max = scope.mask / scope.bits
-
 	return scope
 }
 
-// 生成指定长度的随机字符串
-func (scope *charScope) Generate(length int, prefix ...string) string {
-	preLength := 0
-	n := length
-
-	var ret []byte
+func (scope *charScope) allocRet(length int, prefix ...string) []byte {
 	if len(prefix) > 0 {
 		pre := strings.Join(prefix, "")
-		preLength = len(pre)
-
-		ret = make([]byte, preLength, n+preLength)
-		copy(ret, bytex.StringToBytes(pre))
-	} else {
-		ret = make([]byte, 0, n)
+		ret := make([]byte, len(pre), length+len(pre))
+		copy(ret, pre)
+		return ret
 	}
+	return make([]byte, 0, length)
+}
 
-	var last byte
+// Generate 使用快速伪随机生成器生成指定长度的随机字符串
+func (scope *charScope) Generate(length int, prefix ...string) string {
+	ret := scope.allocRet(length, prefix...)
 
-	for i, cache, remain := n-1, rng.Int63(), scope.max; i >= 0; {
-		if remain == 0 {
-			cache, remain = rng.Int63(), scope.max
+	n := length
+	var cache uint64
+	bitsAvailable := 0
+
+	for i := n - 1; i >= 0; {
+		if bitsAvailable < scope.bits {
+			cache = mrndv2.Uint64()
+			bitsAvailable = 64
 		}
+		idx := int(cache & uint64(scope.mask))
+		cache >>= uint(scope.bits)
+		bitsAvailable -= scope.bits
+		if idx < scope.length {
+			ret = append(ret, scope.bytes[idx])
+			i--
+		}
+	}
+	return bytex.BytesToString(ret)
+}
 
-		if idx := int(cache & int64(scope.mask)); idx < scope.length {
-			curr := scope.bytes[idx]
-			if curr != last {
-				ret = append(ret, curr)
-				last = curr
-				i--
+// GenerateSecure 使用密码学安全随机生成器生成指定长度的随机字符串
+func (scope *charScope) GenerateSecure(length int, prefix ...string) string {
+	ret := scope.allocRet(length, prefix...)
+
+	n := length
+	var cache uint64
+	bitsAvailable := 0
+	var buf [8]byte
+
+	for i := n - 1; i >= 0; {
+		if bitsAvailable < scope.bits {
+			_, err := io.ReadFull(rand.Reader, buf[:])
+			if err != nil {
+				panic(err)
 			}
+			cache = binary.LittleEndian.Uint64(buf[:])
+			bitsAvailable = 64
 		}
-
-		cache >>= int64(scope.bits)
-		remain--
+		idx := int(cache & uint64(scope.mask))
+		cache >>= uint(scope.bits)
+		bitsAvailable -= scope.bits
+		if idx < scope.length {
+			ret = append(ret, scope.bytes[idx])
+			i--
+		}
 	}
-
 	return bytex.BytesToString(ret)
 }
