@@ -1,26 +1,12 @@
 package stringx
 
-import (
-	"slices"
-	"strings"
-	"sync"
-
-	"github.com/charlienet/go-utils/bytex"
-	"github.com/charlienet/go-utils/internal/maps"
-)
+import "strings"
 
 // CamelCase 		userName
 // PascalCase		UserName
 // SnakeCase		user_name
 // PascalSnakeCase	User_Name
 // UpperSnakeCase	USER_NAME
-
-var (
-	pascal2snake      = maps.NewHashMap[map[string]string]().Synchronize()
-	pascal2upperSnake = maps.NewHashMap[map[string]string]().Synchronize()
-	sanke2Pascal      = maps.NewHashMap[map[string]string]().Synchronize()
-	sanke2Camel       = maps.NewHashMap[map[string]string]().Synchronize()
-)
 
 // Pascal转换为驼峰
 func Pascal2Camel(name string) string {
@@ -51,15 +37,12 @@ func Pascal2Snake(name string) string {
 		return name
 	}
 
-	if r, ok := pascal2snake.Get(name); ok {
-		return r
+	// 如果是 camelCase，先转 PascalCase
+	if name[0] >= 'a' && name[0] <= 'z' {
+		name = Camel2Pascal(name)
 	}
 
-	names := splitByCapital(name)
-	s := strings.Join(names, "_")
-	pascal2snake.Set(name, s)
-
-	return s
+	return strings.Join(splitByCapital(name), "_")
 }
 
 func Pascal2UpperSnake(name string) string {
@@ -67,21 +50,17 @@ func Pascal2UpperSnake(name string) string {
 		return name
 	}
 
-	if r, ok := pascal2upperSnake.Get(name); ok {
-		return r
+	// 如果是 camelCase，先转 PascalCase
+	if name[0] >= 'a' && name[0] <= 'z' {
+		name = Camel2Pascal(name)
 	}
 
-	names := splitByCapital(name)
-
-	joined := []byte(strings.Join(names, "_"))
-	for i := 0; i < len(joined); i++ {
+	joined := []byte(strings.Join(splitByCapital(name), "_"))
+	for i := range joined {
 		joined[i] = toUpper(joined[i])
 	}
 
-	s := bytex.BytesToString(joined)
-	pascal2upperSnake.Set(name, s)
-
-	return s
+	return string(joined)
 }
 
 func Camel2UpperSnake(name string) string {
@@ -89,7 +68,9 @@ func Camel2UpperSnake(name string) string {
 		return name
 	}
 
-	return Pascal2UpperSnake(name)
+	// 将驼峰转为帕斯卡，然后转换为大写蛇形
+	pascalCase := Camel2Pascal(name)
+	return Pascal2UpperSnake(pascalCase)
 }
 
 func Camel2Snake(name string) string {
@@ -97,7 +78,36 @@ func Camel2Snake(name string) string {
 		return name
 	}
 
-	return Pascal2Snake(name)
+	// 先转 PascalCase
+	pascalName := Camel2Pascal(name)
+	// 再转 snake_case
+	snakeResult := Pascal2Snake(pascalName)
+
+	// 将首字母转为小写，其余字符保持不变
+	data := []byte(snakeResult)
+	data[0] = toLower(data[0])
+	return string(data)
+}
+
+// ToSnake 将 PascalCase/camelCase 转换为全小写的 snake_case（如 "UserName" -> "user_name"）。
+// 与 Pascal2Snake 遵循相同的切分契约（含缩写词有损行为，见 doc.go Known Limitations #3）。
+// 输入若已是小写 snake_case 则幂等返回。
+func ToSnake(name string) string {
+	if len(name) == 0 {
+		return name
+	}
+
+	// 如果是 camelCase，先转 PascalCase
+	if name[0] >= 'a' && name[0] <= 'z' {
+		name = Camel2Pascal(name)
+	}
+
+	joined := []byte(strings.Join(splitByCapital(name), "_"))
+	for i := range joined {
+		joined[i] = toLower(joined[i])
+	}
+
+	return string(joined)
 }
 
 func Snake2Pascal(name string) string {
@@ -105,18 +115,12 @@ func Snake2Pascal(name string) string {
 		return name
 	}
 
-	if s, ok := sanke2Pascal.Get(name); ok {
-		return s
-	}
-
 	names := strings.Split(name, "_")
 	for i, n := range names {
 		names[i] = Ucfirst(n)
 	}
 
-	s := strings.Join(names, "")
-	sanke2Pascal.Set(name, s)
-	return s
+	return strings.Join(names, "")
 }
 
 func Snake2Camel(name string) string {
@@ -124,23 +128,18 @@ func Snake2Camel(name string) string {
 		return name
 	}
 
-	if s, ok := sanke2Camel.Get(name); ok {
-		return s
-	}
-
 	names := strings.Split(name, "_")
-	names[0] = Lcfirst(names[0])
+	// 对于camelCase，第一个单词应全部小写
+	names[0] = lowerASCII(names[0])
 	for i := 1; i < len(names); i++ {
 		names[i] = Ucfirst(names[i])
 	}
 
-	s := strings.Join(names, "")
-	sanke2Camel.Set(name, s)
-
-	return s
+	return strings.Join(names, "")
 }
 
-// 首字母大写，其余字母小写
+// Ucfirst 首字母大写，其余字母全部小写（破坏性：会丢失其余字符的大小写信息）。
+// 如仅需首字母变换请使用 Lcfirst。Snake2Pascal 依赖本函数的归一化行为。
 func Ucfirst(str string) string {
 	if len(str) == 0 {
 		return str
@@ -155,13 +154,13 @@ func Ucfirst(str string) string {
 	return string(data)
 }
 
-// 首字母小写，其余字母小写
+// Lcfirst 首字母小写，其余保持不变
 func Lcfirst(str string) string {
-	data := []byte(str)
-	for i := 0; i < len(data); i++ {
-		data[i] = toLower(data[i])
+	if len(str) == 0 {
+		return str
 	}
-
+	data := []byte(str)
+	data[0] = toLower(data[0])
 	return string(data)
 }
 
@@ -180,47 +179,57 @@ func toLower(s byte) byte {
 	return s
 }
 
-var p = sync.Pool{
-	New: func() any {
-		return make([]string, 8)
-	},
+// lowerASCII 仅将 ASCII 大写字母转为小写，非 ASCII 字节保持不变。
+// 无大写字母时零分配直接返回原串。
+func lowerASCII(s string) string {
+	for i := 0; i < len(s); i++ {
+		if 'A' <= s[i] && s[i] <= 'Z' {
+			d := []byte(s)
+			for j := i; j < len(d); j++ {
+				d[j] = toLower(d[j])
+			}
+			return string(d)
+		}
+	}
+	return s
 }
 
+// splitByCapital 按 PascalCase/camelCase 词边界切分，遵循社区标准：
+//
+//	规则1：小写或数字之后的大写字母开新词（userName、user123ID、parseURL）
+//	规则2：大写之后的首个小写字母，使前一个大写字母归本词
+//	       （连续大写段的末位大写归后词：XMLParser -> XML|Parser；
+//	        HTTPSserver -> HTTP|Sserver 为声明的有损行为，见 doc.go）
+//	数字不单独成词，跟随当前词（UpdatedAt123 -> Updated|At123）
 func splitByCapital(s string) []string {
-	count := countCapital(s) + 1
-	if count == 1 {
+	if len(s) == 0 {
 		return []string{s}
 	}
 
-	// a := make([]string, count)
+	a := make([]string, 0, 8)
+	last := 0
 
-	a := p.Get().([]string)
-	defer p.Put(a)
-
-	if cap(a) < count {
-		a = slices.Grow(a, count-cap(a))
-	}
-
-	i, n, last := 1, 0, 0
-	for ; i < len(s); i++ {
-		if s[i] >= 'A' && s[i] <= 'Z' {
-			a[n] = s[last:i]
-
-			last = i
-			n++
-		}
-	}
-
-	a[n] = s[last:]
-	return a[:n+1]
-}
-
-func countCapital(s string) int {
-	count := 0
 	for i := 1; i < len(s); i++ {
-		if s[i] >= 'A' && s[i] <= 'Z' {
-			count++
+		cur, prev := s[i], s[i-1]
+
+		if isUpper(cur) && !isUpper(prev) {
+			// 规则1：切点 i
+			a = append(a, s[last:i])
+			last = i
+		} else if isLower(cur) && isUpper(prev) && i-1 > last {
+			// 规则2：切点 i-1；i-1 == last 说明该大写已是词首（ParseURL 的 P），跳过防空段
+			a = append(a, s[last:i-1])
+			last = i - 1
 		}
+		// 大写跟大写（后续统一由规则2回切）、数字、小写跟小写：不切
 	}
-	return count
+
+	if last < len(s) {
+		a = append(a, s[last:])
+	}
+
+	return a
 }
+
+func isUpper(c byte) bool { return c >= 'A' && c <= 'Z' }
+func isLower(c byte) bool { return c >= 'a' && c <= 'z' }

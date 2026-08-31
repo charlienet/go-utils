@@ -1,9 +1,6 @@
 package stringx
 
 import (
-	"bytes"
-	"regexp"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -84,7 +81,13 @@ func TestPascal2Snake(t *testing.T) {
 	}{
 		{"UpdatedAt", "Updated_At"},
 		{"Name", "Name"},
-		{"createdAt", "created_At"},
+		{"createdAt", "Created_At"},             // camelCase input now properly converted
+		{"XMLParser", "XML_Parser"},             //缩写词处理
+		{"HTTPSConnection", "HTTPS_Connection"}, //缩写词处理
+		// 缩写词+小写词（P2 契约下有损，见 doc.go Known Limitations #3）
+		{"HTTPSserver", "HTTP_Sserver"}, //缩写词+小写开头单词
+		{"HTTPserver", "HTT_Pserver"},   //缩写词+小写开头单词
+		{"XMLparser", "XM_Lparser"},     //缩写词+小写开头单词
 		{"N", "N"},
 		{"", ""},
 	}
@@ -145,6 +148,32 @@ func TestCamel2Snake(t *testing.T) {
 	}
 }
 
+func TestToSnake(t *testing.T) {
+	expected := []struct {
+		actual string
+		expect string
+	}{
+		{"", ""},
+		{"a", "a"},
+		{"A", "a"},
+		{"name", "name"},
+		{"Name", "name"},
+		{"UserName", "user_name"},
+		{"updatedAt", "updated_at"},
+		{"XMLParser", "xml_parser"},
+		{"HTTPSConnection", "https_connection"},
+		{"parseURL", "parse_url"},
+		{"user123ID", "user123_id"},
+		{"UpdatedAt123", "updated_at123"},
+		{"HTTPSserver", "http_sserver"},
+		{"HTTPserver", "htt_pserver"},
+	}
+
+	for _, n := range expected {
+		assert.Equal(t, n.expect, ToSnake(n.actual))
+	}
+}
+
 func TestUpper(t *testing.T) {
 	expected := []struct {
 		actual byte
@@ -159,13 +188,6 @@ func TestUpper(t *testing.T) {
 	for _, n := range expected {
 		assert.Equal(t, n.expect, toUpper(n.actual))
 	}
-}
-
-func TestRegexSplit(t *testing.T) {
-	var wordBarrierRegex = regexp.MustCompile(`(\w)([A-Z])`)
-
-	m := bytes.ToUpper(wordBarrierRegex.ReplaceAll([]byte("userNameIsAdmin"), []byte("${1}_${2}")))
-	t.Log(string(m))
 }
 
 func BenchmarkTransform(b *testing.B) {
@@ -217,45 +239,51 @@ func BenchmarkTransform(b *testing.B) {
 			Camel2UpperSnake("updatedAt")
 		}
 	})
+
+	b.Run("Pascal2SnakeParallel", func(b *testing.B) {
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				Pascal2Snake("UpdatedAt")
+			}
+		})
+	})
 }
 
 func TestSplitByCapital2(t *testing.T) {
-	output(splitByCapital("abc"))
-	output(splitByCapital("UpdatedAt"))
-	output(splitByCapital("UpdatedByDayTuesday"))
-	output(splitByCapital("Updated"))
-	output(splitByCapital(""))
-}
-
-func output(s []string) {
-	for _, v := range s {
-		print(string(v) + " ")
+	tests := []struct {
+		input    string
+		expected []string
+	}{
+		{"abc", []string{"abc"}},
+		{"UpdatedAt", []string{"Updated", "At"}},
+		{"UpdatedByDayTuesday", []string{"Updated", "By", "Day", "Tuesday"}},
+		{"Updated", []string{"Updated"}},
+		{"", []string{""}},
+		{"UserName", []string{"User", "Name"}},
+		{"userNameIsAdmin", []string{"user", "Name", "Is", "Admin"}},
+		// 缩写词 + 大写开头单词（正常场景）
+		{"XMLParser", []string{"XML", "Parser"}},
+		{"HTTPSConnection", []string{"HTTPS", "Connection"}},
+		// 缩写词 + 小写词（P2 契约下有损，见 doc.go Known Limitations #3）
+		{"HTTPSserver", []string{"HTTP", "Sserver"}},
+		{"HTTPserver", []string{"HTT", "Pserver"}},
+		{"XMLparser", []string{"XM", "Lparser"}},
+		{"ABcdef", []string{"A", "Bcdef"}},
+		// 其他缩写词场景
+		{"parseURL", []string{"parse", "URL"}},
+		{"getHTTPResponse", []string{"get", "HTTP", "Response"}},
+		{"userID", []string{"user", "ID"}},
+		{"simpleTest", []string{"simple", "Test"}},
+		{"ABC", []string{"ABC"}},
+		{"ABCDef", []string{"ABC", "Def"}},
 	}
-	println()
-}
 
-func TestCount(t *testing.T) {
-	t.Log(countCapital(("UpdatedByDayTuesday")))
-	t.Log(countCapital(("Name")))
-	t.Log(countCapital(("Name")))
-	t.Log(countCapital(("name")))
-}
-
-func BenchmarkCount(b *testing.B) {
-	data := "Updated_By_Day_Tuesday"
-
-	b.Run("sys", func(b *testing.B) {
-		for n := 0; n < b.N; n++ {
-			strings.Count(data, "_")
-		}
-	})
-
-	b.Run("generic_cap", func(b *testing.B) {
-		for n := 0; n < b.N; n++ {
-			countCapital(data)
-		}
-	})
-
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			result := splitByCapital(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
 }
 
 func BenchmarkSplit(b *testing.B) {
@@ -266,10 +294,93 @@ func BenchmarkSplit(b *testing.B) {
 	})
 }
 
+func TestEdgeCases(t *testing.T) {
+	// 测试连续大写字母（缩写词处理）
+	assert.Equal(t, "XML_Parser", Pascal2Snake("XMLParser"))
+	assert.Equal(t, "Parse_URL", Pascal2Snake("ParseURL")) // Now correctly handles abbreviations
+	assert.Equal(t, "HTTPS_Connection", Pascal2Snake("HTTPSConnection"))
+
+	// 测试纯数字
+	assert.Equal(t, "123", Pascal2Snake("123"))
+	assert.Equal(t, "User123", Snake2Pascal("user123"))
+
+	// 测试包含数字的混合
+	assert.Equal(t, "Updated_At123", Pascal2Snake("UpdatedAt123"))
+
+	// 测试空字符串
+	assert.Equal(t, "", Pascal2Snake(""))
+	assert.Equal(t, "", Camel2Snake(""))
+	assert.Equal(t, "", Snake2Pascal(""))
+	assert.Equal(t, "", Pascal2UpperSnake(""))
+	assert.Equal(t, "", Camel2UpperSnake(""))
+	assert.Equal(t, "", Snake2Camel(""))
+
+	// 测试单字符
+	assert.Equal(t, "A", Pascal2Snake("A"))
+	assert.Equal(t, "A", Pascal2Snake("a")) // Now correctly converts single lowercase to Pascal then snake
+
+	// 测试全小写（驼峰形式）
+	assert.Equal(t, "Username", Snake2Pascal("username"))
+	assert.Equal(t, "Username", Pascal2Snake("Username"))
+
+	// 测试全大写
+	assert.Equal(t, "USERNAME", Pascal2Snake("USERNAME")) // All caps remain as is
+
+	// 测试Camel2Snake特殊情况
+	assert.Equal(t, "xml_Parser", Camel2Snake("xmlParser")) // First word lowercase, then PascalCase
+	assert.Equal(t, "updated_At", Camel2Snake("updatedAt")) // Main test case - now properly handled
+	assert.Equal(t, "a", Camel2Snake("a"))                  // Single lowercase letter
+	assert.Equal(t, "a", Camel2Snake("A"))                  // Single uppercase becomes Pascal then snake, then first char lowercased
+	// F5: 大小写归一仅作用于 ASCII；多字节 UTF-8 序列字节完整、ASCII 词首归一化不变
+	assert.Equal(t, "中文field", Snake2Camel("中文Field"))
+}
+
 func BenchmarkUcfirst(b *testing.B) {
 	b.Run("Ucfirst", func(b *testing.B) {
 		for n := 0; n < b.N; n++ {
 			Ucfirst("UCFIRST")
 		}
 	})
+}
+
+func TestUcfirst(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"hello", "Hello"},
+		{"Hello", "Hello"},
+		{"HELLO", "Hello"},
+		{"", ""},
+		{"a", "A"},
+		{"A", "A"},
+		{"helloWorld", "Helloworld"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			assert.Equal(t, tt.expected, Ucfirst(tt.input))
+		})
+	}
+}
+
+func TestLcfirst(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"Hello", "hello"},
+		{"hello", "hello"},
+		{"HELLO", "hELLO"},
+		{"", ""},
+		{"A", "a"},
+		{"a", "a"},
+		{"HelloWorld", "helloWorld"}, // 只转首字母
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			assert.Equal(t, tt.expected, Lcfirst(tt.input))
+		})
+	}
 }
