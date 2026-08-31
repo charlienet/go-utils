@@ -1,8 +1,11 @@
-//nolint:govet // 本文件包含故意设计的 struct tag 冲突测试场景
+// 本文件包含 struct tag 冲突测试。同名 tag 冲突场景通过 reflect.StructOf
+// 在运行时动态构造类型实现，以规避 go vet 的 structtag 静态检查
+// （vet 不识别 //nolint，无法用字面量书写两个相同 json tag 的字段）。
 package json
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -295,18 +298,19 @@ func TestM1_TypeFields_ConflictResolution(t *testing.T) {
 	assert.Contains(t, string(b), `"X"`)
 
 	// 场景4：同深度多个有 tag → 丢弃
-	type A3 struct {
-		X int `json:"X"`
-	}
-	type B3 struct {
-		Y int `json:"X"` // 字段名不同但 tag 相同，触发冲突
-	}
-	type Root3 struct { //nolint:govet // 故意使用相同 tag 测试冲突检测
-		A3
-		B3
-	}
-	r3 := Root3{A3: A3{1}, B3: B3{2}}
-	b, err = marshalJSON(r3, stringx.Pascal2Camel)
+	// 生产代码 typeFields 按 parseTag 的名字部分（逗号前）分组判冲突，
+	// 两个字段的 tag 名字均为 "X" 即冲突。go vet 的 structtag 检查同样按
+	// 名字部分静态判重（//nolint 无效，改为 "X,omitempty" 也会报错），
+	// 因此无法用字面量类型书写。这里用 reflect.StructOf 在运行时动态构造
+	// 含两个 json:"X" 字段的类型：字段名不同但 tag 名相同，触发冲突。
+	rt := reflect.StructOf([]reflect.StructField{
+		{Name: "X", Type: reflect.TypeOf(0), Tag: `json:"X"`},
+		{Name: "Y", Type: reflect.TypeOf(0), Tag: `json:"X"`},
+	})
+	rv := reflect.New(rt).Elem()
+	rv.Field(0).SetInt(1)
+	rv.Field(1).SetInt(2)
+	b, err = marshalJSON(rv.Interface(), stringx.Pascal2Camel)
 	assert.NoError(t, err)
 	// 同名 tag 冲突，字段被丢弃，输出空对象
 	assert.Equal(t, `{}`, string(b))
