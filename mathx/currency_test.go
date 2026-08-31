@@ -8,7 +8,7 @@ import (
 
 func TestFenToYuan(t *testing.T) {
 	tests := []struct {
-		fen      interface{}
+		fen      any
 		expected string
 	}{
 		{100, "1.00"},
@@ -76,15 +76,15 @@ func TestYuanToFen(t *testing.T) {
 func TestCurrencyRoundTrip(t *testing.T) {
 	// 测试分转元再转分的往返一致性
 	testCases := []int64{0, 1, 100, 999, 12345, -100, -12345}
-	
+
 	for _, original := range testCases {
 		// 分转元
 		yuanStr := FenToYuan(original)
-		
+
 		// 元转分
 		backToFen, err := YuanToFen(yuanStr)
 		assert.NoError(t, err)
-		
+
 		// 验证往返一致性
 		assert.Equal(t, original, backToFen)
 	}
