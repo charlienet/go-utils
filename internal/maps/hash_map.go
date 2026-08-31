@@ -2,13 +2,12 @@ package maps
 
 import (
 	"maps"
-
-	"github.com/charlienet/go-utils/locker"
+	"sync"
 )
 
 type hashmap[M ~map[K]V, K comparable, V any] struct {
 	m    M
-	l    locker.RWLocker
+	mu   sync.RWMutex
 	sync bool
 }
 
@@ -24,23 +23,22 @@ func NewHashMap[M ~map[K]V, K comparable, V any](mm ...M) *hashmap[M, K, V] {
 }
 
 func (h *hashmap[M, K, V]) Synchronize() *hashmap[M, K, V] {
-	h.l.Synchronize()
 	h.sync = true
 
 	return h
 }
 
 func (h *hashmap[M, K, V]) Set(k K, v V) {
-	h.l.Lock()
+	h.mu.Lock()
 	h.m[k] = v
-	h.l.Unlock()
+	h.mu.Unlock()
 }
 
 func (h *hashmap[M, K, V]) Get(key K) (V, bool) {
-	h.l.RLock()
+	h.mu.RLock()
 
 	v, ok := h.m[key]
 
-	h.l.RUnlock()
+	h.mu.RUnlock()
 	return v, ok
 }

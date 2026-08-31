@@ -58,7 +58,7 @@ func TestHashMap_Synchronize(t *testing.T) {
 	var wg sync.WaitGroup
 	concurrency := 100
 
-	for i := 0; i < concurrency; i++ {
+	for i := range concurrency {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
