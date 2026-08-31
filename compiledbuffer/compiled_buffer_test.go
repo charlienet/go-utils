@@ -54,8 +54,10 @@ func TestCompiledBuffer_Clear(t *testing.T) {
 	})
 
 	// 添加一些数据
-	cb.Put("hello")
-	cb.Put("world")
+	_, err := cb.Put("hello")
+	assert.NoError(t, err)
+	_, err = cb.Put("world")
+	assert.NoError(t, err)
 
 	// 清空
 	cb.Clear()
@@ -75,7 +77,7 @@ func TestCompiledBuffer_Concurrent(t *testing.T) {
 	concurrency := 100
 
 	// 并发写入
-	for i := 0; i < concurrency; i++ {
+	for i := range concurrency {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
@@ -87,7 +89,7 @@ func TestCompiledBuffer_Concurrent(t *testing.T) {
 	}
 
 	// 并发读取
-	for i := 0; i < concurrency; i++ {
+	for i := range concurrency {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
